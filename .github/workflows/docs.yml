@@ -1,6 +1,4 @@
 name: Build and Deploy Documentation
-with:
-    cname: 'rfisky.casm-telescope.com' 
 
 on:
   push:
@@ -62,4 +60,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/_build/html
-          cname: ''  # Set this to your custom domain if you have one
+          cname: 'rfisky.casm-telescope.com'
