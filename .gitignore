@@ -60,7 +60,6 @@ data/*.sqlite3
 # Cache files
 data/*.txt
 data/celestrak_cache.txt
-data/*_cache.*
 
 # Environment variables
 .env

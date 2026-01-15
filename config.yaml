@@ -8,7 +8,7 @@ database:
 # Cache file locations
 cache:
   tle_file: "data/celestrak_cache.txt"
-  horizon_file: "data/horizon_data.csv"
+  horizon_file: "data/CASM_horizon.csv"
   geo_file: "data/geo_cache.json"
 
 # OpenSky Network API credentials (optional - leave empty for anonymous access)
@@ -25,9 +25,9 @@ timing:
 
 # Server configuration
 server:
-  dev_host: "127.0.0.1"          # Development server IP (127.0.0.1 = localhost only)
+  dev_host: "0.0.0.0"          # Development server IP (127.0.0.1 = localhost only)
   dev_port: 5666                  # Development server port
-  prod_host: "127.0.0.1"         # Production server IP (change to 0.0.0.0 for all interfaces)
+  prod_host: "0.0.0.0"         # Production server IP (change to 0.0.0.0 for all interfaces)
   prod_port: 9893                 # Production server port
   prod_workers: 4                 # Gunicorn worker processes
 

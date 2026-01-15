@@ -49,7 +49,9 @@ class Config:
     def horizon_file(self) -> str:
         """Get horizon profile cache file path."""
         cache_config = self.data.get("cache", {})
-        return cache_config.get("horizon_file", "data/horizon_data.csv")
+        obs_name = self.obs_name
+        default_horizon = f"data/{obs_name}_horizon.csv"
+        return cache_config.get("horizon_file", default_horizon)
 
     @property
     def geo_cache_file(self) -> str:
