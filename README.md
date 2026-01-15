@@ -198,7 +198,44 @@ Returns data for a specific historical snapshot.
     }
 }
 ```
+## Documentation
 
+Build and view the Sphinx documentation locally:
+
+```bash
+# Build documentation from docstrings
+make docs
+
+# Serve documentation at http://localhost:8000
+make docs-serve
+
+# Clean documentation build artifacts
+make docs-clean
+```
+
+### GitHub Pages Deployment
+
+Documentation is automatically built and deployed to GitHub Pages on every push to `main`.
+
+**To enable GitHub Pages:**
+
+1. Go to repository **Settings → Pages**
+2. Under **Build and deployment**, select:
+   - **Source**: GitHub Actions
+   - **Branch**: (no selection needed, GitHub Actions handles this)
+
+3. The workflow at `.github/workflows/docs.yml` will automatically:
+   - Generate API documentation from docstrings using `sphinx-apidoc`
+   - Build HTML documentation using `sphinx-build`
+   - Deploy to GitHub Pages using `peaceiris/actions-gh-pages`
+
+**View deployed documentation:**
+- GitHub Pages URL: `https://username.github.io/repository-name/`
+- Or if custom domain is set in `.github/workflows/docs.yml` under `cname`
+
+**Documentation sources:**
+- Manual docs: `docs/*.rst` (overview, installation, configuration, etc.)
+- API docs: Auto-generated from `src/` module docstrings
 ## Maintenance
 
 ### Clear Cache
