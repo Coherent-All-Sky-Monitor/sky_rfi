@@ -1,0 +1,23 @@
+[project]
+name = "casm-rfi-sky"
+version = "1.0.0"
+description = "CASM RFI Sky Monitor - Satellite and aircraft tracking with horizon visibility"
+requires-python = ">=3.8"
+dependencies = [
+    "Flask>=3.0.0",
+    "numpy>=1.20.0,<2.0.0; python_version < '3.9'",
+    "numpy>=1.26.0; python_version >= '3.9'",
+    "PyYAML>=6.0.1",
+    "skyfield>=1.46",
+    "plotly>=5.18.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+prod = [
+    "gunicorn>=23.0.0; sys_platform != 'win32'",
+]
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"

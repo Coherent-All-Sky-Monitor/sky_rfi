@@ -1,0 +1,334 @@
+/* CASM Sky Monitor Stylesheet */
+
+/* Theme Variables */
+:root {
+  --bg: #1a1a1a;
+  --text: #eee;
+  --panel: #2d2d2d;
+  --border: #555;
+  --accent: #007bff;
+}
+
+body.light {
+  --bg: #f8f9fa;
+  --text: #333;
+  --panel: #fff;
+  --border: #ddd;
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+/* Card Container */
+.card {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--panel);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+header h2 {
+  margin: 0;
+  font-size: 1.8em;
+}
+
+header small {
+  display: block;
+  font-size: 0.85em;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 10px;
+}
+
+button {
+  padding: 8px 16px;
+  cursor: pointer;
+  background: #444;
+  color: #fff;
+  border: 1px solid #666;
+  border-radius: 4px;
+  font-size: 0.9em;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: #555;
+}
+
+body.light button {
+  background: #eee;
+  color: #333;
+  border: 1px solid #ccc;
+}
+
+body.light button:hover {
+  background: #ddd;
+}
+
+button.primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+
+button.primary:hover {
+  background: #0056b3;
+}
+
+/* Mode Selection */
+.mode-select {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  background: rgba(128, 128, 128, 0.1);
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.mode-btn:hover {
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.mode-btn.active {
+  border-color: var(--accent);
+  font-weight: bold;
+  background: rgba(0, 123, 255, 0.1);
+}
+
+/* Dashboard Stats */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-box {
+  background: rgba(128, 128, 128, 0.1);
+  padding: 15px;
+  text-align: center;
+  border-radius: 5px;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.stat-val {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.sub-val {
+  display: block;
+  font-size: 0.8em;
+  color: #999;
+  margin-top: 4px;
+}
+
+.const-list {
+  text-align: left;
+  font-size: 0.85em;
+  list-style: none;
+  padding: 0;
+  margin: 5px 0 0 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.const-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.const-list li span:last-child {
+  font-weight: bold;
+  color: var(--accent);
+}
+
+/* History Controls */
+#history-controls {
+  display: none;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: rgba(128, 128, 128, 0.1);
+  border-radius: 4px;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.playback-controls button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.playback-controls button:hover {
+  background: #0056b3;
+}
+
+#playback-speed {
+  font-size: 0.9em;
+  margin-left: auto;
+}
+
+#speed-select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#timeline {
+  width: 100%;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+#snap-select {
+  width: 100%;
+  padding: 8px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 15px;
+  gap: 0;
+}
+
+.tab {
+  padding: 12px 24px;
+  cursor: pointer;
+  opacity: 0.6;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.tab:hover {
+  opacity: 0.8;
+}
+
+.tab.active {
+  opacity: 1;
+  border-bottom-color: var(--accent);
+}
+
+/* View Panels */
+.view-panel {
+  display: none;
+  width: 100%;
+  min-height: 85vh;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.view-panel.active {
+  display: block;
+}
+
+/* Globe needs more space */
+#globe {
+  width: 100%;
+  min-height: 800px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .controls {
+    margin-top: 10px;
+  }
+
+  .mode-select {
+    flex-direction: column;
+  }
+}
+
+/* Scrollbar Styling */
+.const-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.const-list::-webkit-scrollbar-track {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.const-list::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 3px;
+}
+
+.const-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.6);
+}

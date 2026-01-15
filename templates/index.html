@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ obs_name }} Sky RFI Monitor</title>
+    
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="card">
+        <!-- Header -->
+        <header>
+            <div>
+                <h2>{{ obs_name }} Sky RFI Monitor</h2>
+                <small>{{ obs_lat }}°, {{ obs_lon }}°, {{ obs_alt }}m ASL</small>
+                <div style="margin-top: 4px;">
+                    <small id="utc-time" style="margin-right: 12px;">UTC: --:--:--</small>
+                    <small id="local-time">Local: --:--:--</small>
+                </div>
+                <small id="status" style="margin-top: 4px; display: block;">Connecting...</small>
+            </div>
+            <div class="controls">
+                <button onclick="forceSnapshot()" id="snapshot-btn" title="Save current sky view to database">Snapshot</button>
+                <button onclick="toggleTheme()" id="theme-btn">Light Mode</button>
+            </div>
+        </header>
+
+        <!-- Mode Selection -->
+        <div class="mode-select">
+            <div class="mode-btn active" id="btn-live" onclick="setMode('live')">
+                LIVE ({{ live_poll_sec }}s)
+            </div>
+            <div class="mode-btn" id="btn-hist" onclick="setMode('history')">
+                HISTORY
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="dashboard">
+            <div class="stat-box">
+                <span class="stat-val" id="stat-sats">--</span>
+                <span>Visible Satellites</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-val" id="stat-planes">--</span>
+                <span>Visible Aircraft</span>
+                <span class="sub-val" id="stat-blocked">Blocked: --</span>
+            </div>
+            <div class="stat-box">
+                <span>Top Constellations</span>
+                <ul class="const-list" id="const-list">
+                    <li>Loading...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- History Controls -->
+        <div id="history-controls">
+            <div class="playback-controls">
+                <button onclick="playbackPrev()" title="Previous">◀</button>
+                <button id="play-btn" onclick="playbackToggle()" title="Play/Pause">▶</button>
+                <button onclick="playbackNext()" title="Next">▶▶</button>
+                <span id="playback-speed">Speed: <select id="speed-select" onchange="setPlaybackSpeed(this.value)">
+                    <option value="500">2x</option>
+                    <option value="1000" selected>1x</option>
+                    <option value="2000">0.5x</option>
+                </select></span>
+            </div>
+            <input type="range" id="timeline" min="0" max="0" value="0" oninput="loadHistory(this.value)">
+            <select id="snap-select" onchange="loadHistory(this.value)"></select>
+        </div>
+
+        <!-- View Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="setTab('rect')">Rectangular</div>
+            <div class="tab" onclick="setTab('polar')">Polar</div>
+            <div class="tab" id="globe-tab" onclick="setTab('globe')" style="display: none;">3D Globe</div>
+        </div>
+
+        <!-- View Panels -->
+        <div id="rect" class="view-panel active"></div>
+        <div id="polar" class="view-panel"></div>
+        <div id="globe" class="view-panel"></div>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="{{ url_for('static', filename='app.js') }}?v=8"></script>
+    
+    <!-- Initialize Plots -->
+    <script>
+        // Create initial plots with server data
+        const rectData = {{ fig_rect_json | safe }};
+        const polarData = {{ fig_polar_json | safe }};
+        const globeData = {{ fig_globe_json | safe }};
+        const cfg = { responsive: true };
+        
+        Plotly.newPlot('rect', rectData.data, rectData.layout, cfg);
+        Plotly.newPlot('polar', polarData.data, polarData.layout, cfg);
+        
+        // DEFER Globe initialization until tab is visible
+        window.GLOBE_DATA = globeData; 
+        
+        // Initialize app with config from server
+        initApp({
+            api_token: "{{ api_token }}",
+            obs_name: "{{ obs_name }}",
+            obs_lat: {{ obs_lat }},
+            obs_lon: {{ obs_lon }},
+            live_poll_interval_ms: {{ live_poll_interval_ms }}
+        });
+    </script>
+</body>
+</html>

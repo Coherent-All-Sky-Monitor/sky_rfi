@@ -1,0 +1,85 @@
+# CASM RFI Sky Monitor Configuration
+
+# Database settings
+database:
+  name: "data/casm_rfi_sky.db"
+  retention_days: 7
+
+# Cache file locations
+cache:
+  tle_file: "data/celestrak_cache.txt"
+  horizon_file: "data/horizon_data.csv"
+  geo_file: "data/geo_cache.json"
+
+# OpenSky Network API credentials (optional - leave empty for anonymous access)
+opensky:
+  username: ""
+  password: ""
+
+# Timing intervals (all in seconds unless specified)
+timing:
+  tle_fetch_interval: 7200        # 2 hours - How often to refresh satellite TLE data
+  plane_fetch_interval: 300       # 5 minutes (anonymous OpenSky API)
+  db_snapshot_interval: 1800      # 30 minutes - How often to save snapshots to database
+  live_poll_interval_ms: 2500    # 5 seconds - Frontend refresh rate in milliseconds
+
+# Server configuration
+server:
+  dev_host: "127.0.0.1"          # Development server IP (127.0.0.1 = localhost only)
+  dev_port: 5666                  # Development server port
+  prod_host: "127.0.0.1"         # Production server IP (change to 0.0.0.0 for all interfaces)
+  prod_port: 9893                 # Production server port
+  prod_workers: 4                 # Gunicorn worker processes
+
+# Observatory location
+observatory:
+  name: "CASM"
+  latitude: 37.2317
+  longitude: -118.2951
+  altitude_m: 1222
+
+# Panorama settings for horizon calculation (from heywhatsthat.com)
+panorama:
+  id: "BTV9VXUH"
+  resolution: "0.1"
+
+# Visualization settings
+visualization:
+  beam_width_deg: 100             # Width of observation beam in degrees
+  globe_scale_power: 0.3       # Power function for scaling altitudes on 3D globe
+  plane_search_box_deg: 4.0       # Search box size around observatory for aircraft (degrees)
+
+# Priority constellations (custom styling for specific satellite groups)
+# Format: name: {color, symbol, size, opacity}
+# Symbols: circle, square, diamond, triangle-up, star, etc.
+priority_constellations:
+  Aircraft:
+    color: "#ff0000"
+    symbol: "triangle-up"
+    size: 12
+    opacity: 1.0
+  MUOS:
+    color: "#ff00ff"
+    symbol: "square"
+    size: 6
+    opacity: 1.0
+  STARLINK:
+    color: "#AAAAAA"
+    symbol: "circle"
+    size: 5
+    opacity: 0.6
+
+# Default styling for non-priority satellites
+default_satellite:
+  symbol: "circle"
+  size: 5
+  opacity: 0.75
+
+# API endpoints
+apis:
+  celestrak_tle: "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
+  mccants_classfd: "https://mmccants.org/tles/classfd.zip"
+  opensky: "https://opensky-network.org/api/states"
+  horizon: "https://www.heywhatsthat.com/api/horizon.csv"
+  world_geojson: "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
+  usa_geojson: "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json"
