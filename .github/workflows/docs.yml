@@ -4,20 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'docs/**'
-      - 'pyproject.toml'
-      - 'requirements.txt'
-      - '.github/workflows/docs.yml'
   pull_request:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'docs/**'
-      - 'pyproject.toml'
-      - 'requirements.txt'
 
 jobs:
   build-and-deploy:
@@ -34,13 +23,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Cache pip packages
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles("**/requirements.txt") }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -55,8 +44,9 @@ jobs:
           sphinx-build -b html docs/ docs/_build/html/
 
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == "push" && github.ref == "refs/heads/main"
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/_build/html
+          publish_dir: ./docs/_build/html/
+          force_orphan: true
