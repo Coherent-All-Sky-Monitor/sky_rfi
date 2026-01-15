@@ -5,8 +5,6 @@ Real-time visualization of satellites and aircraft above the horizon at an obser
 
 ## Installation
 
-### Quick Start (Recommended)
-
 Using the included Makefile:
 
 ```bash
