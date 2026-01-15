@@ -1,0 +1,279 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration &mdash; CASM RFI Sky Monitor 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api/index.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CASM RFI Sky Monitor
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-file">Configuration File</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#database-settings">Database Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cache-files">Cache Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#opensky-network">OpenSky Network</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#timing-configuration">Timing Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server-configuration">Server Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#observatory-settings">Observatory Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#panorama-settings">Panorama Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#visualization-settings">Visualization Settings</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up-your-observatory">Setting Up Your Observatory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CASM RFI Sky Monitor</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/configuration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
+<section id="configuration-file">
+<h2>Configuration File<a class="headerlink" href="#configuration-file" title="Link to this heading"></a></h2>
+<p>All settings are stored in <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>. The configuration is organized into several sections:</p>
+<section id="database-settings">
+<h3>Database Settings<a class="headerlink" href="#database-settings" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">database</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;data/casm_rfi_sky.db&quot;</span>
+  <span class="n">retention_days</span><span class="p">:</span> <span class="mi">7</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>: Path to SQLite database file</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">retention_days</span></code>: Number of days to keep snapshots</p></li>
+</ul>
+</section>
+<section id="cache-files">
+<h3>Cache Files<a class="headerlink" href="#cache-files" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cache</span><span class="p">:</span>
+  <span class="n">tle_file</span><span class="p">:</span> <span class="s2">&quot;data/celestrak_cache.txt&quot;</span>
+  <span class="n">horizon_file</span><span class="p">:</span> <span class="s2">&quot;data/CASM_horizon.csv&quot;</span>
+  <span class="n">geo_file</span><span class="p">:</span> <span class="s2">&quot;data/geo_cache.json&quot;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">tle_file</span></code>: Cached satellite TLE data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">horizon_file</span></code>: Horizon profile data from HeyWhatsThat</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">geo_file</span></code>: GeoJSON data for map visualization</p></li>
+</ul>
+</section>
+<section id="opensky-network">
+<h3>OpenSky Network<a class="headerlink" href="#opensky-network" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">opensky</span><span class="p">:</span>
+  <span class="n">username</span><span class="p">:</span> <span class="s2">&quot;&quot;</span>
+  <span class="n">password</span><span class="p">:</span> <span class="s2">&quot;&quot;</span>
+</pre></div>
+</div>
+<p>Leave empty for anonymous access (limited to 400 calls/hour).
+Register at <a class="reference external" href="https://opensky-network.org">https://opensky-network.org</a> for higher limits.</p>
+</section>
+<section id="timing-configuration">
+<h3>Timing Configuration<a class="headerlink" href="#timing-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">timing</span><span class="p">:</span>
+  <span class="n">tle_fetch_interval</span><span class="p">:</span> <span class="mi">7200</span>        <span class="c1"># 2 hours</span>
+  <span class="n">plane_fetch_interval</span><span class="p">:</span> <span class="mi">300</span>       <span class="c1"># 5 minutes</span>
+  <span class="n">db_snapshot_interval</span><span class="p">:</span> <span class="mi">1800</span>      <span class="c1"># 30 minutes</span>
+  <span class="n">live_poll_interval_ms</span><span class="p">:</span> <span class="mi">2500</span>     <span class="c1"># 2.5 seconds</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">tle_fetch_interval</span></code>: How often to refresh satellite TLE data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plane_fetch_interval</span></code>: How often to fetch aircraft positions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">db_snapshot_interval</span></code>: How often to save snapshots to database</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">live_poll_interval_ms</span></code>: Frontend refresh rate (milliseconds)</p></li>
+</ul>
+</section>
+<section id="server-configuration">
+<h3>Server Configuration<a class="headerlink" href="#server-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">server</span><span class="p">:</span>
+  <span class="n">dev_host</span><span class="p">:</span> <span class="s2">&quot;0.0.0.0&quot;</span>
+  <span class="n">dev_port</span><span class="p">:</span> <span class="mi">5666</span>
+  <span class="n">prod_host</span><span class="p">:</span> <span class="s2">&quot;0.0.0.0&quot;</span>
+  <span class="n">prod_port</span><span class="p">:</span> <span class="mi">9893</span>
+  <span class="n">prod_workers</span><span class="p">:</span> <span class="mi">4</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dev_host</span></code>, <code class="docutils literal notranslate"><span class="pre">dev_port</span></code>: Development server settings</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">prod_host</span></code>, <code class="docutils literal notranslate"><span class="pre">prod_port</span></code>: Production server settings</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">prod_workers</span></code>: Number of Gunicorn worker processes</p></li>
+</ul>
+</section>
+<section id="observatory-settings">
+<h3>Observatory Settings<a class="headerlink" href="#observatory-settings" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">observatory</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;CASM&quot;</span>
+  <span class="n">latitude</span><span class="p">:</span> <span class="mf">37.2317</span>
+  <span class="n">longitude</span><span class="p">:</span> <span class="o">-</span><span class="mf">118.2951</span>
+  <span class="n">altitude_m</span><span class="p">:</span> <span class="mi">1222</span>
+</pre></div>
+</div>
+<p>Enter your observatory’s exact coordinates and altitude.</p>
+</section>
+<section id="panorama-settings">
+<h3>Panorama Settings<a class="headerlink" href="#panorama-settings" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">panorama</span><span class="p">:</span>
+  <span class="nb">id</span><span class="p">:</span> <span class="s2">&quot;BTV9VXUH&quot;</span>
+  <span class="n">resolution</span><span class="p">:</span> <span class="s2">&quot;0.1&quot;</span>
+</pre></div>
+</div>
+<p>Get your panorama ID from <a class="reference external" href="https://www.heywhatsthat.com/">https://www.heywhatsthat.com/</a></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">id</span></code>: Your unique panorama identifier</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">resolution</span></code>: Degrees per point (lower = more detail, slower)</p></li>
+</ul>
+</section>
+<section id="visualization-settings">
+<h3>Visualization Settings<a class="headerlink" href="#visualization-settings" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">visualization</span><span class="p">:</span>
+  <span class="n">beam_width_deg</span><span class="p">:</span> <span class="mi">100</span>
+  <span class="n">globe_scale_power</span><span class="p">:</span> <span class="mf">0.3</span>
+  <span class="n">plane_search_box_deg</span><span class="p">:</span> <span class="mf">4.0</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">beam_width_deg</span></code>: Width of observation beam for visualization</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">globe_scale_power</span></code>: Power function for scaling altitudes on 3D globe</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plane_search_box_deg</span></code>: Search radius around observatory for aircraft (degrees)</p></li>
+</ul>
+</section>
+</section>
+<section id="setting-up-your-observatory">
+<h2>Setting Up Your Observatory<a class="headerlink" href="#setting-up-your-observatory" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Get Observatory Coordinates</strong></p>
+<p>Use GPS or mapping service to get precise latitude/longitude/altitude</p>
+</li>
+<li><p><strong>Create HeyWhatsThat Panorama</strong></p>
+<ul class="simple">
+<li><p>Visit <a class="reference external" href="https://www.heywhatsthat.com/">https://www.heywhatsthat.com/</a></p></li>
+<li><p>Create a panorama at your location</p></li>
+<li><p>Note the panorama ID</p></li>
+</ul>
+</li>
+<li><p><strong>Update config.yaml</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">observatory</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;YOUR_OBSERVATORY_NAME&quot;</span>
+  <span class="n">latitude</span><span class="p">:</span> <span class="n">YOUR_LAT</span>
+  <span class="n">longitude</span><span class="p">:</span> <span class="n">YOUR_LON</span>
+  <span class="n">altitude_m</span><span class="p">:</span> <span class="n">YOUR_ALT</span>
+
+<span class="n">panorama</span><span class="p">:</span>
+  <span class="nb">id</span><span class="p">:</span> <span class="s2">&quot;YOUR_PANORAMA_ID&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Test Configuration</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">test</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="environment-variables">
+<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Link to this heading"></a></h2>
+<p>Override configuration via environment variables (optional):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">FLASK_DEBUG</span><span class="o">=</span><span class="mi">1</span>
+<span class="n">export</span> <span class="n">FLASK_ENV</span><span class="o">=</span><span class="n">development</span>
+<span class="n">make</span> <span class="n">dev</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api/index.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CASM.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
