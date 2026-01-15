@@ -26,7 +26,7 @@ COLOR_GREEN := \033[32m
 COLOR_YELLOW := \033[33m
 COLOR_BLUE := \033[34m
 
-.PHONY: help install install-uv dev prod clean test status check-compat docs docs-clean docs-serve
+.PHONY: help install install-uv dev prod clean test status check-compat
 
 help:
 	@echo "$(COLOR_BLUE)CASM sky RFI Monitor - Available Commands$(COLOR_RESET)"
@@ -40,9 +40,6 @@ help:
 	@echo "  $(COLOR_GREEN)make prod$(COLOR_RESET)            - Run server in production mode (gunicorn)"
 	@echo "  $(COLOR_GREEN)make test$(COLOR_RESET)            - Test installation and dependencies"
 	@echo "  $(COLOR_GREEN)make status$(COLOR_RESET)          - Check installation status"
-	@echo "  $(COLOR_GREEN)make docs$(COLOR_RESET)            - Build Sphinx documentation (HTML)"
-	@echo "  $(COLOR_GREEN)make docs-clean$(COLOR_RESET)      - Remove documentation build artifacts"
-	@echo "  $(COLOR_GREEN)make docs-serve$(COLOR_RESET)      - Serve documentation locally (port 8000)"
 	@echo "  $(COLOR_GREEN)make clean$(COLOR_RESET)           - Remove virtual environment and cache files"
 	@echo "  $(COLOR_GREEN)make clean-data$(COLOR_RESET)      - Remove cached data files (keeps database)"
 	@echo ""
@@ -230,24 +227,5 @@ check-compat:
 	@echo "  Skyfield: >=1.46 (compatible with Python 3.8+)"
 	@echo "  Plotly: >=5.18.0 (compatible with Python 3.8+)"
 	@echo ""
-
-# Documentation targets
-docs: $(VENV)/bin/activate
-	@echo "$(COLOR_YELLOW)Generating API documentation from docstrings...$(COLOR_RESET)"
-	$(PYTHON) -m sphinx.ext.apidoc -f -o docs/api/generated src/
-	@echo "$(COLOR_YELLOW)Building Sphinx documentation...$(COLOR_RESET)"
-	$(VENV)/bin/sphinx-build -b html docs/ docs/_build/html/
-	@echo "$(COLOR_GREEN)Documentation built successfully!$(COLOR_RESET)"
-	@echo "$(COLOR_BLUE)Open docs/_build/html/index.html in your browser$(COLOR_RESET)"
-
-docs-clean:
-	@echo "$(COLOR_YELLOW)Cleaning documentation build artifacts...$(COLOR_RESET)"
-	rm -rf docs/_build docs/.doctrees
-	@echo "$(COLOR_GREEN)Documentation cleaned!$(COLOR_RESET)"
-
-docs-serve: docs
-	@echo "$(COLOR_YELLOW)Serving documentation at http://localhost:8000$(COLOR_RESET)"
-	@echo "$(COLOR_YELLOW)Press Ctrl+C to stop$(COLOR_RESET)"
-	cd docs/_build/html && python3 -m http.server 8000
 # Default target
 .DEFAULT_GOAL := help

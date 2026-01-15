@@ -1,46 +1,36 @@
-Overview
-========
-
-Architecture
-------------
+# Architecture Overview
 
 The CASM RFI Sky Monitor consists of several key components:
 
-.. image:: ../architecture.png
-   :alt: System Architecture
-   :align: center
+## Components
 
-Components
-~~~~~~~~~~
-
-**Frontend (Web Interface)**
+### Frontend (Web Interface)
 - Interactive 2D and 3D visualizations
 - Real-time data updates via polling
 - Responsive design for multiple devices
 
-**Backend (Flask API)**
+### Backend (Flask API)
 - REST endpoints for position data
 - Historical snapshot access
 - Real-time live data streaming
 
-**Data Processing**
+### Data Processing
 - Satellite position calculations using Skyfield
 - Aircraft tracking via OpenSky Network
 - Horizon visibility masking
 - 3D coordinate transformations
 
-**Data Storage**
+### Data Storage
 - SQLite database for snapshots
 - Cache files for TLE data and horizon profiles
 - GeoJSON data for map overlays
 
-**Scheduling**
+### Scheduling
 - Background thread for periodic TLE updates
 - Aircraft position refresh cycles
 - Automatic snapshot saving
 
-Data Flow
----------
+## Data Flow
 
 1. **TLE Acquisition**: Download satellite data from CelesTrak
 2. **Position Calculation**: Calculate positions relative to observer
@@ -49,10 +39,9 @@ Data Flow
 5. **Visualization**: Display on interactive web interface
 6. **API Access**: Expose data via REST endpoints
 
-Configuration
---------------
+## Configuration
 
-All settings are configured via ``config.yaml``:
+All settings are configured via `config.yaml`:
 
 - **Observatory Location**: Latitude, longitude, altitude
 - **Horizon Profile**: Panorama ID from HeyWhatsThat
@@ -61,8 +50,7 @@ All settings are configured via ``config.yaml``:
 - **Update Intervals**: Timing for data refreshes
 - **Server Settings**: Host, port, worker configuration
 
-Visibility Calculation
-----------------------
+## Visibility Calculation
 
 An object is visible if:
 
@@ -71,8 +59,7 @@ An object is visible if:
 
 The horizon profile is interpolated at the object's azimuth to determine the minimum altitude for visibility.
 
-Technologies
-~~~~~~~~~~~~
+## Technologies
 
 - **Backend**: Flask, Skyfield, NumPy
 - **Frontend**: Plotly, JavaScript

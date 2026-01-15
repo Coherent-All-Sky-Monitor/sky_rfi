@@ -1,19 +1,8 @@
-CASM RFI Sky Monitor Documentation
-===================================
+# CASM RFI Sky Monitor Documentation
 
 Welcome to the CASM RFI Sky Monitor documentation. This project provides real-time tracking and visualization of satellites and aircraft visibility from a ground-based observatory.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   overview
-   installation
-   configuration
-   api/index
-
-Overview
---------
+## Overview
 
 The CASM RFI Sky Monitor is a Flask-based web application that:
 
@@ -24,8 +13,7 @@ The CASM RFI Sky Monitor is a Flask-based web application that:
 - Stores historical snapshots in SQLite database
 - Exposes REST API for programmatic access
 
-Key Features
-~~~~~~~~~~~~
+## Key Features
 
 - **Real-time Data**: Live satellite and aircraft position updates
 - **Horizon Masking**: Accounts for local terrain obstructions
@@ -34,31 +22,26 @@ Key Features
 - **REST API**: Machine-readable access to position data
 - **Flexible Configuration**: YAML-based setup for different observatories
 
-Quick Start
------------
+## Quick Start
 
-1. **Installation**::
-
-    git clone <repository>
-    cd casm_rfi_sky
-    make install
+1. **Installation**:
+   ```bash
+   git clone <repository>
+   cd casm_rfi_sky
+   make install
+   ```
 
 2. **Configuration**: Edit `config.yaml` with your observatory details
 
-3. **Run Development Server**::
-
-    make dev
+3. **Run Development Server**:
+   ```bash
+   make dev
+   ```
 
 4. **Access Web Interface**: Open http://localhost:5666
 
-API Documentation
------------------
+## Documentation
 
-See the :doc:`api/index` for complete API reference and module documentation.
-
-Indices and Tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+- [Installation Guide](INSTALLATION.md) - Setup instructions
+- [Configuration Guide](CONFIGURATION.md) - How to configure the system
+- [Architecture Overview](OVERVIEW.md) - System design and components
