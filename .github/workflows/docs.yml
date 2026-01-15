@@ -60,4 +60,3 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/_build/html
-          # cname: 'rfisky.casm-telescope.com'  # Set DNS CNAME first, then uncomment
