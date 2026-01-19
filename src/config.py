@@ -59,21 +59,21 @@ class Config:
         cache_config = self.data.get("cache", {})
         return cache_config.get("geo_file", "data/geo_cache.json")
 
-    # OpenSky credentials
+    # OpenSky credentials (deprecated - now using airplanes.live)
     @property
     def opensky_username(self) -> str:
-        """Get OpenSky API username."""
+        """Get OpenSky API username (deprecated)."""
         opensky_cfg = self.data.get("opensky", {})
         return opensky_cfg.get("username", "")
 
     @property
     def opensky_password(self) -> str:
-        """Get OpenSky API password."""
+        """Get OpenSky API password (deprecated)."""
         return self.data.get("opensky", {}).get("password", "")
 
     @property
     def has_opensky_credentials(self) -> bool:
-        """Check if OpenSky credentials are configured."""
+        """Check if OpenSky credentials are configured (deprecated)."""
         return bool(self.opensky_username and self.opensky_password)
 
     # Timing properties
@@ -85,9 +85,8 @@ class Config:
     @property
     def plane_fetch_interval(self) -> int:
         """Get aircraft fetch interval in seconds."""
-        base = self.data.get("timing", {}).get("plane_fetch_interval", 60)
-        # Use 10s if credentials, else interval
-        return 10 if self.has_opensky_credentials else base
+        # Default to 1 second for airplanes.live (no rate limit issues)
+        return self.data.get("timing", {}).get("plane_fetch_interval", 1)
 
     @property
     def db_snapshot_interval(self) -> int:
@@ -124,6 +123,11 @@ class Config:
     def prod_workers(self) -> int:
         """Get production gunicorn worker count."""
         return self.data.get("server", {}).get("prod_workers", 4)
+
+    @property
+    def live_view_url(self) -> str:
+        """Get live view URL (empty string if not configured)."""
+        return self.data.get("server", {}).get("live_view_url", "")
 
     @property
     def observatory(self) -> Dict[str, Any]:
@@ -204,6 +208,11 @@ class Config:
     def get_api_url(self, key: str) -> str:
         """Get API URL by key."""
         return self.apis.get(key, "")
+
+    @property
+    def aircraft_source(self) -> str:
+        """Get aircraft API source (airplanes_live or opensky)."""
+        return self.apis.get("aircraft_source", "airplanes_live")
 
 
 # Global configuration instance

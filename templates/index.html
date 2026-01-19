@@ -6,7 +6,7 @@
     <title>{{ obs_name }} Sky RFI Monitor</title>
     
     <!-- Plotly -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     
     <!-- Stylesheet -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -22,23 +22,23 @@
                     <small id="utc-time" style="margin-right: 12px;">UTC: --:--:--</small>
                     <small id="local-time">Local: --:--:--</small>
                 </div>
-                <small id="status" style="margin-top: 4px; display: block;">Connecting...</small>
+                <small id="snapshot-time" style="margin-top: 4px; display: block; color: #888;">Viewing: --</small>
+                <small id="next-snapshot" style="margin-top: 2px; display: block; color: #888;">Next snapshot: --</small>
+                <small id="snapshot-cooldown" style="margin-top: 2px; display: block; color: #888;"></small>
+                <div style="margin-top: 4px; font-size: 0.75em; color: #666;">
+                    <div id="last-tle-fetch">TLE fetch: --</div>
+                    <div id="last-aircraft-fetch">Aircraft fetch: --</div>
+                    <div id="last-computation">Computation: --</div>
+                </div>
             </div>
             <div class="controls">
                 <button onclick="forceSnapshot()" id="snapshot-btn" title="Save current sky view to database">Snapshot</button>
+                {% if live_view_url %}
+                <button onclick="window.open('{{ live_view_url }}', '_blank')" id="live-view-btn" title="Open live view">Live View</button>
+                {% endif %}
                 <button onclick="toggleTheme()" id="theme-btn">Light Mode</button>
             </div>
         </header>
-
-        <!-- Mode Selection -->
-        <div class="mode-select">
-            <div class="mode-btn active" id="btn-live" onclick="setMode('live')">
-                LIVE ({{ live_poll_sec }}s)
-            </div>
-            <div class="mode-btn" id="btn-hist" onclick="setMode('history')">
-                HISTORY
-            </div>
-        </div>
 
         <!-- Dashboard Stats -->
         <div class="dashboard">
@@ -60,18 +60,25 @@
         </div>
 
         <!-- History Controls -->
-        <div id="history-controls">
-            <div class="playback-controls">
-                <button onclick="playbackPrev()" title="Previous">◀</button>
-                <button id="play-btn" onclick="playbackToggle()" title="Play/Pause">▶</button>
-                <button onclick="playbackNext()" title="Next">▶▶</button>
-                <span id="playback-speed">Speed: <select id="speed-select" onchange="setPlaybackSpeed(this.value)">
-                    <option value="500">2x</option>
-                    <option value="1000" selected>1x</option>
-                    <option value="2000">0.5x</option>
-                </select></span>
+        <div id="history-controls" style="display: block;">
+            <div class="playback-header">
+                <div class="playback-buttons">
+                    <button class="playback-btn" onclick="playbackPrev()" title="Previous">⏮</button>
+                    <button class="playback-btn play-pause" id="play-btn" onclick="playbackToggle()" title="Play/Pause">▶</button>
+                    <button class="playback-btn" onclick="playbackNext()" title="Next">⏭</button>
+                </div>
+                <div class="playback-speed">
+                    <label for="speed-select">Speed:</label>
+                    <select id="speed-select" onchange="setPlaybackSpeed(this.value)">
+                        <option value="500">2×</option>
+                        <option value="1000" selected>1×</option>
+                        <option value="2000">0.5×</option>
+                    </select>
+                </div>
             </div>
-            <input type="range" id="timeline" min="0" max="0" value="0" oninput="loadHistory(this.value)">
+            <div class="timeline-container">
+                <input type="range" id="timeline" min="0" max="0" value="0" oninput="loadHistory(this.value)">
+            </div>
             <select id="snap-select" onchange="loadHistory(this.value)"></select>
         </div>
 
@@ -79,13 +86,43 @@
         <div class="tabs">
             <div class="tab active" onclick="setTab('rect')">Rectangular</div>
             <div class="tab" onclick="setTab('polar')">Polar</div>
-            <div class="tab" id="globe-tab" onclick="setTab('globe')" style="display: none;">3D Globe</div>
+            <div class="tab" id="globe-tab" onclick="setTab('globe')">3D Globe</div>
         </div>
 
         <!-- View Panels -->
         <div id="rect" class="view-panel active"></div>
         <div id="polar" class="view-panel"></div>
         <div id="globe" class="view-panel"></div>
+        
+        <!-- Rate Limit Banner -->
+        <div id="rate-limit-banner" class="rate-limit-banner hidden">
+            <span class="banner-icon">⏳</span>
+            <span id="banner-message">Rate limited</span>
+            <button class="banner-close" onclick="closeBanner()">×</button>
+        </div>
+    </div>
+
+    <!-- Public API Documentation -->
+    <div class="api-docs">
+        <h3>Public API Endpoints</h3>
+        <p class="api-description">These endpoints are publicly accessible without authentication:</p>
+        <div class="api-endpoints">
+            <div class="api-endpoint">
+                <code class="api-method">GET</code>
+                <code class="api-path">/api/public/latest</code>
+                <span class="api-desc">Get current positions of all visible satellites and aircraft</span>
+            </div>
+            <div class="api-endpoint">
+                <code class="api-method">GET</code>
+                <code class="api-path">/api/public/snapshots</code>
+                <span class="api-desc">List all saved snapshots with IDs and timestamps</span>
+            </div>
+            <div class="api-endpoint">
+                <code class="api-method">GET</code>
+                <code class="api-path">/api/public/snapshot/&lt;id&gt;</code>
+                <span class="api-desc">Get positions from a specific snapshot by ID</span>
+            </div>
+        </div>
     </div>
 
     <!-- Application JavaScript -->

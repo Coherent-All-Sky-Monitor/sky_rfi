@@ -166,79 +166,186 @@ class TLEClient:
 
 
 class AircraftClient:
-    """Fetch aircraft positions from OpenSky Network."""
+    """Fetch aircraft positions from airplanes.live or OpenSky."""
 
     def __init__(self):
-        self.api_url = CONFIG.get_api_url("opensky")
-        self.username = CONFIG.opensky_username
-        self.password = CONFIG.opensky_password
+        self.source = CONFIG.aircraft_source
+        self.airplanes_live_url = CONFIG.get_api_url("airplanes_live")
+        self.opensky_url = CONFIG.get_api_url("opensky")
+        self.opensky_user = CONFIG.opensky_username
+        self.opensky_pass = CONFIG.opensky_password
         self.cooldown_until = 0
 
     def fetch_aircraft(self) -> List[Dict[str, Any]]:
-        """
-        Fetch aircraft positions within search box
-        around observatory.
+        """Fetch aircraft positions using configured API source."""
+        if self.source == "opensky":
+            return self._fetch_opensky()
+        else:
+            return self._fetch_airplanes_live()
 
-        Returns:
-            List of aircraft dicts with 'name', 'lat',
-            'lon', 'alt_m' keys
-        """
-        # Check cooldown
+    def _fetch_airplanes_live(self) -> List[Dict[str, Any]]:
+        """Fetch aircraft from airplanes.live API."""
+        # Check cooldown (shouldn't be needed with airplanes.live)
         if time.time() < self.cooldown_until:
             remaining = int(self.cooldown_until - time.time())
             if remaining % 60 == 0:
                 cooldown_msg = (
-                    f"OpenSky cooldown active. Resuming in {remaining}s..."
+                    f"API cooldown active. Resuming in {remaining}s..."
                 )
                 log("API", cooldown_msg)
             return []
 
-        # Build search box
-        box = [
-            CONFIG.obs_lat - CONFIG.plane_search_box_deg,
-            CONFIG.obs_lon - CONFIG.plane_search_box_deg,
-            CONFIG.obs_lat + CONFIG.plane_search_box_deg,
-            CONFIG.obs_lon + CONFIG.plane_search_box_deg,
-        ]
+        # Convert search box to radius in nautical miles
+        # plane_search_box_deg is in degrees; ~60 NM per degree latitude
+        radius_nm = int(CONFIG.plane_search_box_deg * 60)
 
-        log("API", "Fetching aircraft from OpenSky...")
+        log("API", "Fetching aircraft from airplanes.live...")
         aircraft = []
-        auth = (
-            (self.username, self.password)
-            if (self.username and self.password)
-            else None
-        )
 
         try:
+            # airplanes.live API: /v2/point/{lat}/{lon}/{radius_nm}
             url = (
-                f"{self.api_url}/all?"
-                f"lamin={box[0]}&lomin={box[1]}&"
-                f"lamax={box[2]}&lomax={box[3]}"
+                f"{self.airplanes_live_url}/point/"
+                f"{CONFIG.obs_lat}/{CONFIG.obs_lon}/{radius_nm}"
             )
+            headers = {"User-Agent": "Mozilla/5.0"}
+            r = requests.get(url, headers=headers, timeout=10)
+
+            if r.status_code == 200:
+                data = r.json()
+                if data and data.get("ac"):
+                    for p in data["ac"]:
+                        # airplanes.live fields: lat, lon, alt_geom,
+                        # alt_baro, flight, r (registration)
+                        if p.get("lat") and p.get("lon"):
+                            # Try geometric altitude first, then barometric
+                            alt_ft = p.get("alt_geom") or p.get("alt_baro")
+                            if alt_ft is not None and alt_ft != "ground":
+                                try:
+                                    # Convert feet to meters
+                                    # (string or numeric values)
+                                    alt_m = float(alt_ft) * 0.3048
+                                except (ValueError, TypeError):
+                                    continue
+                                # Use flight callsign, or registration, or hex
+                                # as name
+                                name = (
+                                    p.get("flight", "").strip()
+                                    or p.get("r", "")
+                                    or p.get("hex", "UNK")
+                                )
+                                aircraft.append(
+                                    {
+                                        "name": name,
+                                        "lat": p["lat"],
+                                        "lon": p["lon"],
+                                        "alt_m": alt_m,
+                                    }
+                                )
+                    adsb_msg = (
+                        "airplanes.live success: "
+                        f"{len(aircraft)} aircraft found"
+                    )
+                    log("API", adsb_msg)
+                else:
+                    log("API", "airplanes.live: No aircraft in range")
+
+            elif r.status_code == 429:
+                # Handle rate limiting (unlikely with airplanes.live)
+                retry_header = r.headers.get(
+                    "X-Rate-Limit-Retry-After-Seconds"
+                )
+                wait_time = int(retry_header) + 5 if retry_header else 60
+                rate_msg = f"API rate limit (429). Waiting {wait_time}s"
+                log("API", rate_msg)
+                self.cooldown_until = time.time() + wait_time
+
+            else:
+                log(
+                    "API",
+                    f"airplanes.live error {r.status_code}: {r.text[:50]}",
+                )
+
+        except (requests.RequestException, ValueError, KeyError) as e:
+            log("API", f"Request error: {e}")
+
+        if not aircraft:
+            msg = (
+                "airplanes.live: fetched 0 aircraft (after filtering "
+                "invalid lat/lon/alt)"
+            )
+            log("API", msg)
+        return aircraft
+
+    def _fetch_opensky(self) -> List[Dict[str, Any]]:
+        """Fetch aircraft from OpenSky Network API."""
+        # Check cooldown
+        if time.time() < self.cooldown_until:
+            remaining = int(self.cooldown_until - time.time())
+            if remaining % 60 == 0:
+                log("API", f"API cooldown active. Resuming in {remaining}s...")
+            return []
+
+        # Calculate bounding box
+        box_deg = CONFIG.plane_search_box_deg
+        lat_min = CONFIG.obs_lat - box_deg
+        lat_max = CONFIG.obs_lat + box_deg
+        lon_min = CONFIG.obs_lon - box_deg
+        lon_max = CONFIG.obs_lon + box_deg
+
+        log("API", "Fetching aircraft from OpenSky Network...")
+        aircraft = []
+
+        try:
+            # OpenSky API: /states/all?lamin=...&lomin=...&lamax=...&lomax=...
+            url = (
+                f"{self.opensky_url}/states/all?"
+                f"lamin={lat_min}&lomin={lon_min}&"
+                f"lamax={lat_max}&lomax={lon_max}"
+            )
+
+            # Add authentication if credentials provided
+            auth = None
+            if self.opensky_user and self.opensky_pass:
+                auth = (self.opensky_user, self.opensky_pass)
+                log("API", "Using OpenSky authenticated access")
+
             headers = {"User-Agent": "Mozilla/5.0"}
             r = requests.get(url, headers=headers, auth=auth, timeout=10)
 
             if r.status_code == 200:
                 data = r.json()
                 if data and data.get("states"):
-                    for p in data["states"]:
-                        # Try barometric altitude first,
-                        # then geometric
-                        alt = p[7] if p[7] is not None else p[13]
-                        if p[5] and p[6] and alt is not None:
-                            aircraft.append(
-                                {
-                                    "name": p[1].strip(),
-                                    "lat": p[6],
-                                    "lon": p[5],
-                                    "alt_m": alt,
-                                }
+                    for state in data["states"]:
+                        # OpenSky state vector format:
+                        # [0] icao24, [1] callsign, [5] longitude,
+                        # [6] latitude, [7] baro_altitude,
+                        # [13] geometric_altitude
+                        if state[5] and state[6]:  # lon, lat
+                            # Try geometric altitude first, then barometric
+                            alt_m = (
+                                state[13]
+                                if state[13] is not None
+                                else state[7]
                             )
-                    opensky_msg = (
-                        f"OpenSky success: {len(aircraft)} raw "
-                        f"aircraft found"
+                            if alt_m is not None:
+                                callsign = (
+                                    (state[1] or "").strip()
+                                    or state[0]
+                                    or "UNK"
+                                )
+                                aircraft.append(
+                                    {
+                                        "name": callsign,
+                                        "lat": state[6],
+                                        "lon": state[5],
+                                        "alt_m": alt_m,
+                                    }
+                                )
+                    log(
+                        "API",
+                        f"OpenSky success: {len(aircraft)} aircraft found",
                     )
-                    log("API", opensky_msg)
                 else:
                     log("API", "OpenSky: No aircraft in range")
 
@@ -248,8 +355,7 @@ class AircraftClient:
                     "X-Rate-Limit-Retry-After-Seconds"
                 )
                 wait_time = int(retry_header) + 5 if retry_header else 300
-                rate_msg = f"OpenSky rate limit (429). Waiting {wait_time}s"
-                log("API", rate_msg)
+                log("API", f"OpenSky rate limit (429). Waiting {wait_time}s")
                 self.cooldown_until = time.time() + wait_time
 
             else:
@@ -259,11 +365,10 @@ class AircraftClient:
             log("API", f"Request error: {e}")
 
         if not aircraft:
-            msg = (
-                "OpenSky: fetched 0 aircraft (after filtering "
-                "invalid lat/lon/alt)"
+            log(
+                "API",
+                "OpenSky: fetched 0 aircraft (after filtering invalid data)",
             )
-            log("API", msg)
         return aircraft
 
 

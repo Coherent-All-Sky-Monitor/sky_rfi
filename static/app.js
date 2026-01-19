@@ -1,10 +1,9 @@
-// CASM Sky Monitor - Client-side Application
+// CASM rfi Sky Monitor js
 
 // Global state
 let geoData = null;
 let isDark = true;
 let historyList = [];
-let liveTimer = null;
 let CONFIG = {};
 let STATIC_TRACES = { rect: [], polar: [] }; // Store initial static traces
 let GLOBE_BASE_TRACES = []; // Store globe base traces
@@ -12,7 +11,8 @@ let isGlobeInitialized = false; // Track if globe plot exists
 let API_TOKEN = ''; // API authentication token
 let playbackTimer = null; // Playback interval
 let playbackSpeed = 1000; // Playback speed in ms
-let currentMode = 'live'; // Track current mode
+let statusInterval = null; // Status polling interval
+const MONO_FONT = '"SFMono-Regular","Menlo","Consolas","Liberation Mono","Courier New",monospace';
 
 /**
  * Initialize the application
@@ -67,113 +67,124 @@ function initApp(config) {
   updateClock();
   setInterval(updateClock, 1000);
   
-  // Start in live mode
-  setMode('live');
+  // Start status polling
+  fetchStatus();
+  statusInterval = setInterval(fetchStatus, 1000);
+  
+  // Load history mode
+  loadHistoryList();
+
+  // Apply monospace fonts to plots
+  applyMonospacePlots();
 }
 
 /**
  * Resize plots to fit container
  */
 function resizePlots() {
-  const card = document.querySelector('.card');
-  if (!card) return;
-  
-  const width = card.clientWidth - 40;
-  
-  // Rect height: 30% of width, min 400px
-  const rectHeight = Math.max(400, width * 0.3) + 'px';
-  document.getElementById('rect').style.height = rectHeight;
-  
-  // Polar height: Square, min 800px
-  const sqHeight = Math.max(800, width) + 'px';
-  document.getElementById('polar').style.height = sqHeight;
-  
-  // Globe height: Same as width (Square), min 800px
-  const globeHeight = Math.max(800, width);
-  const globeEl = document.getElementById('globe');
-  
-  if (globeEl && isGlobeInitialized) {
-    globeEl.style.height = globeHeight + 'px';
-    Plotly.relayout(globeEl, {width: width, height: globeHeight});
-  }
-  
-  Plotly.Plots.resize(document.getElementById('rect'));
-  Plotly.Plots.resize(document.getElementById('polar'));
-}
-
-/**
- * Switch between live and history mode
- * @param {string} mode - 'live' or 'history'
- */
-function setMode(mode) {
-  currentMode = mode;
-  document.getElementById('btn-live').classList.toggle('active', mode === 'live');
-  document.getElementById('btn-hist').classList.toggle('active', mode === 'history');
-  document.getElementById('history-controls').style.display = mode === 'history' ? 'block' : 'none';
-  
-  // Show/hide globe tab based on mode
-  const globeTab = document.getElementById('globe-tab');
-  if (mode === 'history') {
-    globeTab.style.display = 'block';
-  } else {
-    globeTab.style.display = 'none';
-    // Switch to rect view if globe is active
-    if (document.getElementById('globe').classList.contains('active')) {
-      setTab('rect');
-    }
-  }
-  
-  // Stop playback when switching modes
-  stopPlayback();
-  
-  if (mode === 'live') {
-    fetchLive();
-    if (!liveTimer) {
-      liveTimer = setInterval(fetchLive, CONFIG.live_poll_interval_ms);
-    }
-  } else {
-    clearInterval(liveTimer);
-    liveTimer = null;
+  try {
+    const card = document.querySelector('.card');
+    if (!card) return;
     
-    fetch('/api/history', {
-      headers: { 'X-API-Token': API_TOKEN }
-    })
-      .then(r => r.json())
-      .then(data => {
-        historyList = data;
-        const sel = document.getElementById('snap-select');
-        sel.innerHTML = '';
-        data.forEach((h, i) => {
-          const opt = document.createElement('option');
-          opt.value = i;
-          opt.text = h.readable_time;
-          sel.add(opt);
-        });
-        document.getElementById('timeline').max = data.length - 1;
-        if (data.length > 0) {
-          loadHistory(data.length - 1);
-        }
-      })
-      .catch(err => console.error('Failed to load history:', err));
+    const width = card.clientWidth - 40;
+    
+    // Rect height: 30% of width, min 400px
+    const rectHeight = Math.max(400, width * 0.3) + 'px';
+    const rectEl = document.getElementById('rect');
+    if (rectEl && rectEl.offsetParent !== null) {
+      rectEl.style.height = rectHeight;
+      try {
+        Plotly.Plots.resize(rectEl);
+      } catch (e) {
+        console.warn('Could not resize rect plot:', e.message);
+      }
+    }
+    
+    // Polar height: Square, min 800px
+    const sqHeight = Math.max(800, width) + 'px';
+    const polarEl = document.getElementById('polar');
+    if (polarEl && polarEl.offsetParent !== null) {
+      polarEl.style.height = sqHeight;
+      try {
+        Plotly.Plots.resize(polarEl);
+      } catch (e) {
+        console.warn('Could not resize polar plot:', e.message);
+      }
+    }
+    
+    // Globe height: Same as width (Square), min 800px
+    const globeHeight = Math.max(800, width);
+    const globeEl = document.getElementById('globe');
+    
+    if (globeEl && isGlobeInitialized) {
+      globeEl.style.height = globeHeight + 'px';
+      try {
+        Plotly.relayout(globeEl, {width: width, height: globeHeight});
+      } catch (e) {
+        console.warn('Could not relayout globe plot:', e.message);
+      }
+    }
+  } catch (e) {
+    console.warn('resizePlots error:', e.message);
   }
 }
 
 /**
- * Fetch live data from server
+ * Load history list from server
  */
-function fetchLive() {
-  fetch('/api/live', {
+function loadHistoryList() {
+  fetch('/api/history', {
     headers: { 'X-API-Token': API_TOKEN }
   })
     .then(r => r.json())
     .then(data => {
-      updateUI(data, data.time_str);
-      document.getElementById('status').textContent = `${CONFIG.obs_name} - LIVE MODE`;
+      historyList = data;
+      const sel = document.getElementById('snap-select');
+      if (!sel) return;
+      
+      sel.innerHTML = '';
+      data.forEach((h, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.text = h.readable_time;
+        sel.add(opt);
+      });
+      const timeline = document.getElementById('timeline');
+      if (timeline) timeline.max = data.length - 1;
+      
+      if (data.length > 0) {
+        loadHistory(data.length - 1);
+      } else {
+        // Database is empty - wait for initial data fetch, then create first snapshot
+        const snapshotTimeEl = document.getElementById('snapshot-time');
+        if (snapshotTimeEl) snapshotTimeEl.textContent = 'Waiting for initial data...';
+        
+        // Poll status until both TLE and aircraft data are fetched
+        const waitForData = setInterval(() => {
+          fetch('/api/status', {
+            headers: { 'X-API-Token': API_TOKEN }
+          })
+            .then(res => res.json())
+            .then(statusData => {
+              const hasTLE = statusData.last_tle_fetch && statusData.last_tle_fetch > 0;
+              const hasAircraft = statusData.last_aircraft_fetch && statusData.last_aircraft_fetch > 0;
+              const timeEl = document.getElementById('snapshot-time');
+              
+              if (hasTLE && hasAircraft) {
+                clearInterval(waitForData);
+                if (timeEl) timeEl.textContent = 'Creating first snapshot...';
+                forceSnapshot();
+              } else if (hasTLE && !hasAircraft) {
+                if (timeEl) timeEl.textContent = 'Fetching aircraft data...';
+              } else if (!hasTLE) {
+                if (timeEl) timeEl.textContent = 'Fetching satellite data...';
+              }
+            })
+            .catch(err => console.error('Status check error:', err));
+        }, 1000);
+      }
     })
-    .catch(err => {
-      console.error('Fetch error:', err);
-      document.getElementById('status').textContent = 'Connection Error';
-    });
+    .catch(err => console.error('loadHistoryList error:', err));
 }
 
 /**
@@ -184,15 +195,21 @@ function loadHistory(idx) {
   const item = historyList[parseInt(idx)];
   if (!item) return;
   
+  // Update snapshot time display
+  document.getElementById('snapshot-time').textContent = `Viewing: ${item.readable_time}`;
+  
   fetch(`/api/snapshot/${item.id}`, {
     headers: { 'X-API-Token': API_TOKEN }
   })
     .then(r => r.json())
     .then(data => {
       updateUI(data, item.readable_time);
-      document.getElementById('timeline').value = idx;
-      document.getElementById('snap-select').value = idx;
-      document.getElementById('status').textContent = `${CONFIG.obs_name} - HISTORY MODE`;
+      const timeline = document.getElementById('timeline');
+      if (timeline) timeline.value = idx;
+      const select = document.getElementById('snap-select');
+      if (select) select.value = idx;
+      const status = document.getElementById('status');
+      if (status) status.textContent = `Snapshot: ${item.readable_time}`;
     })
     .catch(err => console.error('Failed to load snapshot:', err));
 }
@@ -203,6 +220,26 @@ function loadHistory(idx) {
  * @param {string} timeStr - Timestamp string
  */
 function updateUI(data, timeStr) {
+  // Check for aircraft API rate limiting
+  if (data.aircraft_rate_limit_until) {
+    const rateLimitUntil = data.aircraft_rate_limit_until * 1000; // Convert to ms
+    const now = Date.now();
+    const remaining = Math.ceil((rateLimitUntil - now) / 1000);
+    
+    console.log(`Rate limit check: until=${rateLimitUntil}, now=${now}, remaining=${remaining}s`);
+    
+    if (remaining > 0) {
+      showAircraftRateLimitBanner(remaining);
+    } else {
+      // Rate limit has expired, close banner if showing
+      if (isAircraftRateLimited) {
+        closeBanner();
+      }
+    }
+  } else {
+    console.log('No rate limit in data');
+  }
+  
   // Update stats
   document.getElementById('stat-sats').textContent = data.stats.sat_count;
   document.getElementById('stat-planes').textContent = data.stats.plane_count;
@@ -463,45 +500,120 @@ function setTab(id) {
  * Toggle dark/light theme
  */
 function toggleTheme() {
-  isDark = !isDark;
-  document.body.classList.toggle('light', !isDark);
-  document.getElementById('theme-btn').textContent = isDark ? 'Light Mode' : 'Dark Mode';
-  
-  const txt = isDark ? '#eee' : '#222';
-  const grd = isDark ? '#444' : '#ddd';
-  const line = isDark ? '#888' : '#333';
-  
-  const layoutUpdate = {
-    'font.color': txt,
-    'title.font.color': txt,
-    'legend.font.color': txt,
-    'xaxis.gridcolor': grd,
-    'yaxis.gridcolor': grd,
-    'xaxis.linecolor': line,
-    'yaxis.linecolor': line,
-    'xaxis.title.font.color': txt,
-    'yaxis.title.font.color': txt,
-    'polar.radialaxis.gridcolor': grd,
-    'polar.angularaxis.gridcolor': grd,
-    'paper_bgcolor': 'rgba(0,0,0,0)',
-    'plot_bgcolor': 'rgba(0,0,0,0)'
-  };
-  
-  ['rect', 'polar', 'globe'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) Plotly.relayout(id, layoutUpdate);
-  });
-  
-  // Toggle terrain visibility
-  const rectEl = document.getElementById('rect');
-  const polarEl = document.getElementById('polar');
-  if (rectEl) {
-    Plotly.restyle('rect', 'visible', isDark, [1]);
-    Plotly.restyle('rect', 'visible', !isDark, [2]);
+  try {
+    isDark = !isDark;
+    document.body.classList.toggle('light', !isDark);
+    const themeBtn = document.getElementById('theme-btn');
+    if (themeBtn) themeBtn.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    
+    const txt = isDark ? '#eee' : '#222';
+    const grd = isDark ? '#444' : '#ddd';
+    const line = isDark ? '#888' : '#333';
+    
+    const layoutUpdate = {
+      'font.family': MONO_FONT,
+      'font.color': txt,
+      'title.font.color': txt,
+      'title.font.family': MONO_FONT,
+      'legend.font.color': txt,
+      'legend.font.family': MONO_FONT,
+      'hoverlabel.font.family': MONO_FONT,
+      'hoverlabel.font.color': txt,
+      'xaxis.gridcolor': grd,
+      'yaxis.gridcolor': grd,
+      'xaxis.linecolor': line,
+      'yaxis.linecolor': line,
+      'xaxis.title.font.color': txt,
+      'yaxis.title.font.color': txt,
+      'xaxis.title.font.family': MONO_FONT,
+      'yaxis.title.font.family': MONO_FONT,
+      'polar.radialaxis.tickfont.family': MONO_FONT,
+      'polar.angularaxis.tickfont.family': MONO_FONT,
+      'polar.radialaxis.tickfont.color': txt,
+      'polar.angularaxis.tickfont.color': txt,
+      'polar.radialaxis.gridcolor': grd,
+      'polar.angularaxis.gridcolor': grd,
+      'paper_bgcolor': 'rgba(0,0,0,0)',
+      'plot_bgcolor': 'rgba(0,0,0,0)'
+    };
+    
+    ['rect', 'polar', 'globe'].forEach(id => {
+      try {
+        const el = document.getElementById(id);
+        if (el && el.data && el.layout) {
+          Plotly.relayout(id, layoutUpdate);
+          updateAnnotationsFont(id);
+        }
+      } catch (e) {
+        console.warn(`Could not update theme for ${id}:`, e.message);
+      }
+    });
+    
+    // Toggle terrain visibility
+    try {
+      const rectEl = document.getElementById('rect');
+      if (rectEl && rectEl.data && rectEl.data.length > 2) {
+        Plotly.restyle('rect', 'visible', isDark, [1]);
+        Plotly.restyle('rect', 'visible', !isDark, [2]);
+      }
+    } catch (e) {
+      console.warn('Could not toggle rect terrain:', e.message);
+    }
+    
+    try {
+      const polarEl = document.getElementById('polar');
+      if (polarEl && polarEl.data && polarEl.data.length > 2) {
+        Plotly.restyle('polar', 'visible', isDark, [1]);
+        Plotly.restyle('polar', 'visible', !isDark, [2]);
+      }
+    } catch (e) {
+      console.warn('Could not toggle polar terrain:', e.message);
+    }
+  } catch (e) {
+    console.warn('toggleTheme error:', e.message);
   }
-  if (polarEl) {
-    Plotly.restyle('polar', 'visible', isDark, [1]);
-    Plotly.restyle('polar', 'visible', !isDark, [2]);
+}
+
+
+// Apply monospace font across all plots
+function applyMonospacePlots() {
+  const fontUpdate = {
+    'font.family': MONO_FONT,
+    'title.font.family': MONO_FONT,
+    'legend.font.family': MONO_FONT,
+    'xaxis.title.font.family': MONO_FONT,
+    'yaxis.title.font.family': MONO_FONT,
+    'hoverlabel.font.family': MONO_FONT,
+    'polar.radialaxis.tickfont.family': MONO_FONT,
+    'polar.angularaxis.tickfont.family': MONO_FONT,
+  };
+  ['rect', 'polar', 'globe'].forEach(id => {
+    try {
+      const el = document.getElementById(id);
+      if (el && el.data && el.layout) {
+        Plotly.relayout(id, fontUpdate);
+        updateAnnotationsFont(id);
+      }
+    } catch (e) {
+      console.warn(`Could not apply monospace to ${id}:`, e.message);
+    }
+  });
+}
+
+// Ensure annotations use monospace font
+function updateAnnotationsFont(plotId) {
+  try {
+    const el = document.getElementById(plotId);
+    if (!el || !el.layout) return;
+    const anns = el.layout.annotations || [];
+    if (!anns.length) return;
+    const updated = anns.map(a => ({
+      ...a,
+      font: { ...(a.font || {}), family: MONO_FONT },
+    }));
+    Plotly.relayout(plotId, { annotations: updated });
+  } catch (e) {
+    console.warn(`Could not update annotations for ${plotId}:`, e.message);
   }
 }
 
@@ -589,10 +701,205 @@ function updateClock() {
     document.getElementById('local-time').textContent = `Local: ${localHours}:${localMinutes}:${localSeconds}`;
   }
 }
+let rateLimitTimer = null;
+let rateLimitEndTime = null;
+let aircraftRateLimitTimer = null;
+let isAircraftRateLimited = false;
+
+/**
+ * Show aircraft API rate limit banner with countdown
+ */
+function showAircraftRateLimitBanner(waitSeconds) {
+  const banner = document.getElementById('rate-limit-banner');
+  const message = document.getElementById('banner-message');
+  const snapshotBtn = document.getElementById('snapshot-btn');
+  
+  banner.classList.remove('hidden');
+  isAircraftRateLimited = true;
+  
+  // Disable snapshot button
+  snapshotBtn.disabled = true;
+  snapshotBtn.title = 'Cannot take snapshot: Aircraft API is rate limited';
+  
+  const endTime = Date.now() + (waitSeconds * 1000);
+  
+  // Clear any existing timer
+  if (aircraftRateLimitTimer) {
+    clearInterval(aircraftRateLimitTimer);
+  }
+  
+  // Update countdown every second
+  function updateCountdown() {
+    const remaining = Math.ceil((endTime - Date.now()) / 1000);
+    
+    if (remaining <= 0) {
+      closeBanner();
+      return;
+    }
+    
+    message.textContent = `Aircraft API rate limited: Data will resume in ${remaining}s (Snapshots disabled)`;
+  }
+  
+  updateCountdown();
+  aircraftRateLimitTimer = setInterval(updateCountdown, 1000);
+}
+
+/**
+ * Show rate limit banner with countdown
+ */
+function showRateLimitBanner(waitSeconds) {
+  const banner = document.getElementById('rate-limit-banner');
+  const message = document.getElementById('banner-message');
+  
+  banner.classList.remove('hidden');
+  rateLimitEndTime = Date.now() + (waitSeconds * 1000);
+  
+  // Clear any existing timer
+  if (rateLimitTimer) {
+    clearInterval(rateLimitTimer);
+  }
+  
+  // Update countdown every second
+  function updateCountdown() {
+    const remaining = Math.ceil((rateLimitEndTime - Date.now()) / 1000);
+    
+    if (remaining <= 0) {
+      closeBanner();
+      return;
+    }
+    
+    message.textContent = `Rate limited: Please wait ${remaining}s before creating another snapshot`;
+  }
+  
+  updateCountdown();
+  rateLimitTimer = setInterval(updateCountdown, 1000);
+}
+
+/**
+ * Close rate limit banner
+ */
+function closeBanner() {
+  const banner = document.getElementById('rate-limit-banner');
+  const snapshotBtn = document.getElementById('snapshot-btn');
+  
+  banner.classList.add('hidden');
+  
+  if (rateLimitTimer) {
+    clearInterval(rateLimitTimer);
+    rateLimitTimer = null;
+  }
+  
+  if (aircraftRateLimitTimer) {
+    clearInterval(aircraftRateLimitTimer);
+    aircraftRateLimitTimer = null;
+    isAircraftRateLimited = false;
+    
+    // Re-enable snapshot button if it was disabled for aircraft rate limit
+    if (snapshotBtn.disabled && snapshotBtn.title.includes('Aircraft API')) {
+      snapshotBtn.disabled = false;
+      snapshotBtn.title = 'Save current sky view to database';
+    }
+  }
+  
+  // Re-enable snapshot button (if it was disabled for snapshot rate limit)
+  if (snapshotBtn.textContent.startsWith('Wait')) {
+    snapshotBtn.disabled = false;
+    snapshotBtn.textContent = 'Snapshot';
+  }
+}
+
+/**
+ * Fetch and display scheduler status
+ */
+function fetchStatus() {
+  fetch('/api/status', {
+    headers: { 'X-API-Token': API_TOKEN }
+  })
+    .then(res => res.json())
+    .then(data => {
+      const now = Date.now() / 1000;
+      
+      // Update next snapshot time
+      const nextSnapEl = document.getElementById('next-snapshot');
+      if (data.next_snapshot_at && data.next_snapshot_at > now) {
+        const seconds = Math.ceil(data.next_snapshot_at - now);
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (minutes > 0) {
+          nextSnapEl.textContent = `Next snapshot: ${minutes}m ${secs}s`;
+        } else {
+          nextSnapEl.textContent = `Next snapshot: ${secs}s`;
+        }
+      } else {
+        nextSnapEl.textContent = 'Next snapshot: < 1s';
+      }
+      
+      // Update force snapshot cooldown
+      const cooldownEl = document.getElementById('snapshot-cooldown');
+      const snapshotBtn = document.getElementById('snapshot-btn');
+      if (data.force_snapshot_available_at && data.force_snapshot_available_at > now) {
+        const seconds = Math.ceil(data.force_snapshot_available_at - now);
+        cooldownEl.textContent = `Manual snapshot: wait ${seconds}s`;
+        cooldownEl.style.color = '#ff6b6b';
+        if (snapshotBtn && snapshotBtn.textContent !== 'Saving...') {
+          snapshotBtn.disabled = true;
+          snapshotBtn.textContent = `Wait ${seconds}s`;
+        }
+      } else {
+        cooldownEl.textContent = 'Manual snapshot: ready';
+        cooldownEl.style.color = '#51cf66';
+        if (snapshotBtn && snapshotBtn.textContent !== 'Saving...') {
+          snapshotBtn.disabled = false;
+          snapshotBtn.textContent = 'Snapshot';
+        }
+      }
+      
+      // Update timestamp displays
+      const formatTimeAgo = (timestamp) => {
+        if (!timestamp || timestamp === 0) return 'never';
+        const ago = Math.floor(now - timestamp);
+        if (ago < 60) return `${ago}s ago`;
+        if (ago < 3600) return `${Math.floor(ago / 60)}m ago`;
+        return `${Math.floor(ago / 3600)}h ago`;
+      };
+      
+      document.getElementById('last-tle-fetch').textContent = `TLE fetch: ${formatTimeAgo(data.last_tle_fetch)}`;
+      document.getElementById('last-aircraft-fetch').textContent = `Aircraft fetch: ${formatTimeAgo(data.last_aircraft_fetch)}`;
+      document.getElementById('last-computation').textContent = `Computation: ${formatTimeAgo(data.last_computation)}`;
+      
+      // Check aircraft rate limit
+      if (data.aircraft_rate_limit_until && data.aircraft_rate_limit_until > now) {
+        const seconds = Math.ceil(data.aircraft_rate_limit_until - now);
+        showAircraftRateLimitBanner(seconds);
+      }
+    })
+    .catch(err => console.error('Status fetch error:', err));
+}
+
 /**
  * Force a snapshot to be saved to the database
  */
 function forceSnapshot() {
+  // Don't allow snapshot if aircraft API is rate limited
+  if (isAircraftRateLimited) {
+    return;
+  }
+
+  // Block if API token is not ready (avoid 403 + parse errors)
+  if (!API_TOKEN) {
+    console.warn('Snapshot blocked: API token not set yet');
+    const btnInit = document.getElementById('snapshot-btn');
+    if (btnInit) {
+      btnInit.disabled = true;
+      btnInit.textContent = 'Waiting for token';
+      setTimeout(() => {
+        btnInit.textContent = 'Snapshot';
+        btnInit.disabled = false;
+      }, 1500);
+    }
+    return;
+  }
+  
   const btn = document.getElementById('snapshot-btn');
   const originalText = btn.textContent;
   
@@ -608,38 +915,52 @@ function forceSnapshot() {
     },
     body: JSON.stringify({ wait_for_aircraft: true })
   })
-    .then(r => r.json().then(data => ({ status: r.status, data })))
-    .then(({ status, data }) => {
-      if (status === 200) {
-        // Success
-        btn.textContent = 'Saved!';
-        document.getElementById('status').textContent = data.message;
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.disabled = false;
-        }, 2000);
-      } else if (status === 429) {
-        // Rate limited
-        btn.textContent = `Wait ${data.wait_seconds}s`;
-        document.getElementById('status').textContent = data.message;
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.disabled = false;
-        }, data.wait_seconds * 1000);
-      } else {
-        // Error
-        btn.textContent = 'Failed';
-        document.getElementById('status').textContent = data.message || 'Snapshot failed';
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.disabled = false;
-        }, 2000);
+    .then(async r => {
+      const status = r.status;
+      let data = null;
+      try {
+        data = await r.json();
+      } catch (e) {
+        // Fallback to text if JSON parsing fails
+        try {
+          const text = await r.text();
+          data = { message: text || `HTTP ${status}` };
+        } catch (_) {
+          data = { message: `HTTP ${status}` };
+        }
       }
+      return { status, data, ok: r.ok };
+    })
+    .then(({ status, data, ok }) => {
+      console.log('Snapshot response:', { status, data, ok, dataStatus: data?.status });
+      if (status === 429 || data?.status === 'rate_limited') {
+        // Rate limited - show banner with countdown and keep button disabled briefly
+        const waitSeconds = data?.wait_seconds || 60;
+        showRateLimitBanner(waitSeconds);
+        btn.textContent = `Wait ${waitSeconds}s`;
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, Math.min(waitSeconds, 5) * 1000); // re-enable quickly; banner handles longer wait
+        return;
+      }
+
+      // For all other responses, just show a quick status and re-enable
+      btn.textContent = (status === 200 && data?.status === 'success') ? 'Saved!' : 'Done';
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        // Reload history to show new snapshot; ignore errors
+        try {
+          loadHistoryList();
+        } catch (e) {
+          console.error('Error loading history after snapshot:', e);
+        }
+      }, 1200);
     })
     .catch(err => {
       console.error('Snapshot error:', err);
       btn.textContent = 'Error';
-      document.getElementById('status').textContent = 'Network error';
       setTimeout(() => {
         btn.textContent = originalText;
         btn.disabled = false;

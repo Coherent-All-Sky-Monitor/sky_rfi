@@ -14,7 +14,7 @@ import numpy as np
 import plotly.graph_objects as go  # type: ignore
 from flask import Flask, abort, jsonify, render_template, request
 
-from src.api_clients import horizon_client
+from src.api_clients import aircraft_client, horizon_client
 from src.calculations import position_calc
 from src.config import CONFIG
 from src.database import db
@@ -52,46 +52,57 @@ with open(lock_file, "w", encoding="utf-8") as lock:
 log("SYSTEM", f"API token: {API_TOKEN[:8]}... (PID {os.getpid()})")
 
 # Start background scheduler thread (only one process should run it)
-scheduler_lock = os.path.join(_project_root, "data", ".scheduler_running")
-should_run_scheduler = False
+# Use atomic file locking to ensure only one worker starts the scheduler
+scheduler_lock_file = os.path.join(_project_root, "data", ".scheduler_running")
+scheduler_lock_fd = os.path.join(_project_root, "data", ".scheduler.lock")
 
-if os.path.exists(scheduler_lock):
-    # Check if the PID in the lock file is still running
+with open(scheduler_lock_fd, "w", encoding="utf-8") as lock:
+    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
     try:
-        with open(scheduler_lock, "r", encoding="utf-8") as f:
-            old_pid = int(f.read().strip())
+        should_run_scheduler = False
 
-        # Check if process is alive (send signal 0)
-        try:
-            os.kill(old_pid, 0)
-            # Process is alive, don't start scheduler
-            log("SYSTEM", f"Scheduler already running in PID {old_pid}")
-        except (OSError, ProcessLookupError):
-            # Process is dead, remove stale lock
-            STALE_LOCK_MSG = (
-                f"Removing stale scheduler lock (PID {old_pid} is dead)"
-            )
-            log("SYSTEM", STALE_LOCK_MSG)
-            os.remove(scheduler_lock)
+        if os.path.exists(scheduler_lock_file):
+            # Check if the PID in the lock file is still running
+            try:
+                with open(scheduler_lock_file, "r", encoding="utf-8") as f:
+                    old_pid = int(f.read().strip())
+
+                # Check if process is alive (send signal 0)
+                try:
+                    os.kill(old_pid, 0)
+                    # Process is alive, don't start scheduler
+                    log(
+                        "SYSTEM", f"Scheduler already running in PID {old_pid}"
+                    )
+                except (OSError, ProcessLookupError):
+                    # Process is dead, remove stale lock
+                    STALE_LOCK_MSG = (
+                        "Removing stale scheduler lock (PID "
+                        f"{old_pid} is dead)"
+                    )
+                    log("SYSTEM", STALE_LOCK_MSG)
+                    os.remove(scheduler_lock_file)
+                    should_run_scheduler = True
+            except (ValueError, FileNotFoundError):
+                # Invalid lock file, remove it
+                log("SYSTEM", "Removing invalid scheduler lock file")
+                try:
+                    os.remove(scheduler_lock_file)
+                except FileNotFoundError:
+                    pass
+                should_run_scheduler = True
+        else:
             should_run_scheduler = True
-    except (ValueError, FileNotFoundError):
-        # Invalid lock file, remove it
-        log("SYSTEM", "Removing invalid scheduler lock file")
-        try:
-            os.remove(scheduler_lock)
-        except FileNotFoundError:
-            pass
-        should_run_scheduler = True
-else:
-    should_run_scheduler = True
 
-if should_run_scheduler:
-    with open(scheduler_lock, "w", encoding="utf-8") as f:
-        f.write(str(os.getpid()))
-    scheduler_thread = threading.Thread(target=scheduler.run_forever)
-    scheduler_thread.daemon = True
-    scheduler_thread.start()
-    log("SYSTEM", "Background scheduler started (master worker)")
+        if should_run_scheduler:
+            with open(scheduler_lock_file, "w", encoding="utf-8") as f:
+                f.write(str(os.getpid()))
+            scheduler_thread = threading.Thread(target=scheduler.run_forever)
+            scheduler_thread.daemon = True
+            scheduler_thread.start()
+            log("SYSTEM", "Background scheduler started (master worker)")
+    finally:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 def format_traces(objects):
@@ -105,7 +116,12 @@ def format_traces(objects):
         Dictionary with traces_2d, traces_3d, stats, and top constellations
     """
     grouped = {}
-    stats = {"sat_count": 0, "plane_count": 0, "constellations": {}}
+    stats = {
+        "sat_count": 0,
+        "plane_count": 0,
+        "planes_blocked": 0,
+        "constellations": {},
+    }
 
     # Group objects
     for o in objects:
@@ -259,8 +275,25 @@ def format_public_output(objects, timestamp_str):
 @app.route("/api/public/latest")
 def public_api_latest():
     """Get latest position data (Public)."""
+    import time
+
+    # Wait for aircraft API cooldown if needed
+    cooldown = aircraft_client.cooldown_until
+    if time.time() < cooldown:
+        wait_seconds = int(cooldown - time.time())
+        log(
+            "API",
+            f"Public API waiting {wait_seconds}s for aircraft cooldown...",
+        )
+        time.sleep(wait_seconds + 1)  # Add 1 second buffer
+
+    # Fetch fresh aircraft data
+    aircraft = aircraft_client.fetch_aircraft()
+    state.set_aircraft(aircraft)
+    state.set_aircraft_rate_limit(aircraft_client.cooldown_until)
+
+    # Use cached TLE data
     tles = state.get_tles()
-    aircraft = state.get_aircraft()
     objects = position_calc.calculate_visible_objects(tles, aircraft)
 
     return jsonify(format_public_output(objects, format_timestamp()))
@@ -306,39 +339,47 @@ def verify_api_token():
         abort(403)
 
 
-@app.route("/api/live")
-def api_live():
-    """Get current live data."""
-    verify_api_token()
-    tles = state.get_tles()
-    aircraft = state.get_aircraft()
-
-    objects = position_calc.calculate_visible_objects(tles, aircraft)
-    response = format_traces(objects)
-    response["time_str"] = format_timestamp()
-
-    # Add blocked aircraft count
-    stats_data = state.get_stats()
-    total_fetched = stats_data.get("planes_total", 0)
-    response["stats"]["planes_blocked"] = max(
-        0, total_fetched - response["stats"]["plane_count"]
-    )
-
-    return jsonify(response)
-
-
 @app.route("/api/snapshot/<int:snapshot_id>")
 def api_snapshot(snapshot_id):
     """Get specific historical snapshot."""
     verify_api_token()
     objects = db.get_snapshot(snapshot_id)
+
+    # Count objects by type
+    sat_count = sum(1 for o in objects if o["type"] == "satellite")
     plane_count = sum(1 for o in objects if o["type"] == "plane")
-    snap_msg = (
-        f"Snapshot {snapshot_id}: {len(objects)} objects, "
-        f"{plane_count} aircraft"
+
+    # Get snapshot timestamp
+    all_snaps = db.get_all_snapshots()
+    timestamp_str = "unknown"
+    for s in all_snaps:
+        if s["id"] == snapshot_id:
+            timestamp_str = s["readable_time"]
+            break
+
+    log(
+        "VIEW",
+        f"Displaying snapshot #{snapshot_id} from {timestamp_str}: "
+        f"{sat_count} satellites, {plane_count} aircraft",
     )
-    log("API", snap_msg)
-    return jsonify(format_traces(objects))
+
+    response = format_traces(objects)
+    # Add current rate limit status so banner shows even when
+    # viewing old snapshots
+    response["aircraft_rate_limit_until"] = state.get_aircraft_rate_limit()
+
+    return jsonify(response)
+
+
+@app.route("/api/status")
+def api_status():
+    """Get current system status."""
+    verify_api_token()
+    scheduler_status = scheduler.get_status()
+    scheduler_status["aircraft_rate_limit_until"] = (
+        state.get_aircraft_rate_limit()
+    )
+    return jsonify(scheduler_status)
 
 
 @app.route("/api/history")
@@ -607,6 +648,7 @@ def index():
         obs_alt=CONFIG.obs_alt,
         live_poll_interval_ms=CONFIG.live_poll_interval_ms,
         live_poll_sec=CONFIG.live_poll_interval_ms / 1000,
+        live_view_url=CONFIG.live_view_url,
         fig_rect_json=fig_rect.to_json(),
         fig_polar_json=fig_polar.to_json(),
         fig_globe_json=fig_globe.to_json(),

@@ -11,17 +11,12 @@ cache:
   horizon_file: "data/CASM_horizon.csv"
   geo_file: "data/geo_cache.json"
 
-# OpenSky Network API credentials (optional - leave empty for anonymous access)
-opensky:
-  username: ""
-  password: ""
-
 # Timing intervals (all in seconds unless specified)
 timing:
   tle_fetch_interval: 7200        # 2 hours - How often to refresh satellite TLE data
-  plane_fetch_interval: 300       # 5 minutes (anonymous OpenSky API)
+  # plane_fetch_interval: 10      # (Unused) Aircraft data fetched on-demand during snapshots
   db_snapshot_interval: 1800      # 30 minutes - How often to save snapshots to database
-  live_poll_interval_ms: 2500    # 5 seconds - Frontend refresh rate in milliseconds
+  # live_poll_interval_ms: 10000  # (Unused) No longer using live polling mode
 
 # Server configuration
 server:
@@ -30,6 +25,7 @@ server:
   prod_host: "0.0.0.0"         # Production server IP (change to 0.0.0.0 for all interfaces)
   prod_port: 9893                 # Production server port
   prod_workers: 4                 # Gunicorn worker processes
+  live_view_url: "https://sky.casm-telescope.com/rfi"               # Optional: External live view URL (leave empty to hide button)
 
 # Observatory location
 observatory:
@@ -77,9 +73,11 @@ default_satellite:
 
 # API endpoints
 apis:
+  aircraft_source: "opensky" #"airplanes_live"  # Options: "airplanes_live" or "opensky"
   celestrak_tle: "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
   mccants_classfd: "https://mmccants.org/tles/classfd.zip"
-  opensky: "https://opensky-network.org/api/states"
+  airplanes_live: "https://api.airplanes.live/v2"
+  opensky: "https://opensky-network.org/api"  # OpenSky Network API base URL
   horizon: "https://www.heywhatsthat.com/api/horizon.csv"
   world_geojson: "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
   usa_geojson: "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json"

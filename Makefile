@@ -35,6 +35,7 @@ help:
 	@echo "  $(COLOR_GREEN)make install-uv$(COLOR_RESET)      - Install dependencies using uv (faster)"
 	@echo "  $(COLOR_GREEN)make check-compat$(COLOR_RESET)    - Check Python 3.8+ compatibility"
 	@echo "  $(COLOR_GREEN)make service-install$(COLOR_RESET) - Install as Linux systemd service (requires sudo)"
+	@echo "  $(COLOR_GREEN)make service-uninstall$(COLOR_RESET) - Uninstall systemd service (requires sudo)"
 	@echo "  $(COLOR_GREEN)make service-log$(COLOR_RESET)     - View service logs"
 	@echo "  $(COLOR_GREEN)make dev$(COLOR_RESET)             - Run server in development mode (Flask debug)"
 	@echo "  $(COLOR_GREEN)make prod$(COLOR_RESET)            - Run server in production mode (gunicorn)"

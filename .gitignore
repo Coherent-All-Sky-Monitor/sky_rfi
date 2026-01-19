@@ -56,6 +56,11 @@ htmlcov/
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+data/.api_token
+data/.api_token.lock
+data/.scheduler_running
+data/.scheduler.lock
+data/.timestamps.json
 
 # Cache files
 data/*.txt
