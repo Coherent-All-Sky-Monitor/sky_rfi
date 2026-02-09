@@ -99,3 +99,6 @@ yarn.lock
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Ephemeris files
+de421.bsp

@@ -14,6 +14,7 @@ import numpy as np
 import plotly.graph_objects as go  # type: ignore
 from flask import Flask, abort, jsonify, render_template, request
 
+from src.analysis import analyze_fov_density
 from src.api_clients import aircraft_client, horizon_client
 from src.calculations import position_calc
 from src.config import CONFIG
@@ -379,6 +380,7 @@ def api_status():
     scheduler_status["aircraft_rate_limit_until"] = (
         state.get_aircraft_rate_limit()
     )
+    scheduler_status["aircraft_using_fallback"] = state.get_aircraft_fallback()
     return jsonify(scheduler_status)
 
 
@@ -657,6 +659,76 @@ def index():
 
 # ---------------------------------------------------------
 # MAIN
+# ---------------------------------------------------------
+# Analysis Endpoints
+# ---------------------------------------------------------
+
+
+@app.route("/api/analyze/fov")
+def api_analyze_fov():
+    """Analyze object density in a given field of view across all snapshots."""
+    verify_api_token()
+
+    try:
+        # Get parameters from query string
+        center_az = float(request.args.get("az", 180))  # Default: South
+        center_alt = float(
+            request.args.get("alt", 45)
+        )  # Default: 45° elevation
+        fov_deg = float(request.args.get("fov", 10))  # Default: 10° FoV
+        object_type = request.args.get("type", "all")  # Default: all objects
+        source_names_str = request.args.get(
+            "sources", ""
+        )  # Comma-separated source names
+
+        # Parse source names
+        source_names = []
+        if source_names_str.strip():
+            source_names = [
+                s.strip() for s in source_names_str.split(",") if s.strip()
+            ]
+
+        # Validate parameters
+        if not (0 <= center_az <= 360):
+            return jsonify({"error": "Azimuth must be between 0 and 360"}), 400
+        if not (0 <= center_alt <= 90):
+            return jsonify({"error": "Altitude must be between 0 and 90"}), 400
+        if not (0 < fov_deg <= 180):
+            return jsonify({"error": "FoV must be between 0 and 180"}), 400
+        if object_type not in ["all", "satellite", "plane"]:
+            return (
+                jsonify(
+                    {"error": "Type must be 'all', 'satellite', or 'plane'"}
+                ),
+                400,
+            )
+
+        # Run analysis
+        result = analyze_fov_density(
+            center_az, center_alt, fov_deg, object_type, source_names
+        )
+
+        if "error" in result:
+            return jsonify(result), 400
+
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({"error": f"Invalid parameter: {str(e)}"}), 400
+    except Exception as e:
+        import traceback
+
+        log("ERROR", f"Analysis failed: {e}")
+        log("ERROR", f"Traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Analysis failed"}), 500
+
+
+@app.route("/analyze")
+def analyze_page():
+    """Render analysis page."""
+    return render_template("analyze.html", api_token=API_TOKEN)
+
+
 # ---------------------------------------------------------
 
 if __name__ == "__main__":

@@ -1,0 +1,88 @@
+{
+  "sources": [
+    {
+      "name": "Crab",
+      "aliases": ["Crab Nebula", "M1", "Taurus A"],
+      "ra": "05h34m31.94s",
+      "dec": "+22d00m52.2s",
+      "type": "pulsar"
+    },
+    {
+      "name": "Vela",
+      "aliases": ["Vela Pulsar"],
+      "ra": "08h35m20.61s",
+      "dec": "-45d10m35.8s",
+      "type": "pulsar"
+    },
+    {
+      "name": "B1919+21",
+      "aliases": ["PSR B1919+21", "CP1919"],
+      "ra": "19h21m44.815s",
+      "dec": "+21d53m02.25s",
+      "type": "pulsar"
+    },
+    {
+      "name": "B0329+54",
+      "aliases": ["PSR B0329+54"],
+      "ra": "03h32m59.368s",
+      "dec": "+54d34m43.57s",
+      "type": "pulsar"
+    },
+    {
+      "name": "B0531+21",
+      "aliases": ["PSR B0531+21", "Crab Pulsar"],
+      "ra": "05h34m31.94s",
+      "dec": "+22d00m52.2s",
+      "type": "pulsar"
+    },
+    {
+      "name": "B0833-45",
+      "aliases": ["PSR B0833-45", "Vela Pulsar"],
+      "ra": "08h35m20.61s",
+      "dec": "-45d10m35.8s",
+      "type": "pulsar"
+    },
+    {
+      "name": "Cas A",
+      "aliases": ["Cassiopeia A", "3C461"],
+      "ra": "23h23m24s",
+      "dec": "+58d48m54s",
+      "type": "snr"
+    },
+    {
+      "name": "Cyg A",
+      "aliases": ["Cygnus A", "3C405"],
+      "ra": "19h59m28.36s",
+      "dec": "+40d44m02.1s",
+      "type": "galaxy"
+    },
+    {
+      "name": "Tau A",
+      "aliases": ["Taurus A", "Crab Nebula"],
+      "ra": "05h34m31.94s",
+      "dec": "+22d00m52.2s",
+      "type": "snr"
+    },
+    {
+      "name": "Vir A",
+      "aliases": ["Virgo A", "M87"],
+      "ra": "12h30m49.42s",
+      "dec": "+12d23m28.0s",
+      "type": "galaxy"
+    },
+    {
+      "name": "Sgr A*",
+      "aliases": ["Sagittarius A*", "SgrA*"],
+      "ra": "17h45m40.04s",
+      "dec": "-29d00m28.1s",
+      "type": "black hole"
+    },
+    {
+      "name": "B1933+16",
+      "aliases": ["PSR B1933+16", "PSR J1935+1616"],
+      "ra": "19h35m47.82s",
+      "dec": "+16d16m39.9s",
+      "type": "pulsar"
+    }
+  ]
+}

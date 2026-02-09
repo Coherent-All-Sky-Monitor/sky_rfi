@@ -24,6 +24,7 @@ class DataState:
         self._aircraft = []
         self._stats = {"planes_total": 0, "horizon_points": 0}
         self._aircraft_rate_limit_until = 0.0
+        self._aircraft_using_fallback = False
         self._last_tle_fetch = 0.0
         self._last_aircraft_fetch = 0.0
         self._last_computation = 0.0
@@ -69,6 +70,16 @@ class DataState:
         """Get aircraft API rate limit end time (0 if not rate limited)."""
         with self._lock:
             return self._aircraft_rate_limit_until
+
+    def set_aircraft_fallback(self, using_fallback: bool):
+        """Set whether aircraft data is using fallback source."""
+        with self._lock:
+            self._aircraft_using_fallback = using_fallback
+
+    def get_aircraft_fallback(self) -> bool:
+        """Get whether aircraft data is using fallback source."""
+        with self._lock:
+            return self._aircraft_using_fallback
 
     def set_last_computation(self, timestamp: float):
         """Set last computation timestamp."""
@@ -220,27 +231,27 @@ class Scheduler:
                 self.state.set_aircraft_rate_limit(
                     aircraft_client.cooldown_until
                 )
+                # Track if we're using fallback
+                self.state.set_aircraft_fallback(
+                    aircraft_client.using_fallback
+                )
 
-                # Check if we have valid data and not rate limited
+                # Check if we have valid data
                 tles = self.state.get_tles()
-                rate_limit_until = self.state.get_aircraft_rate_limit()
+                using_fallback = self.state.get_aircraft_fallback()
 
                 # Skip snapshot if:
                 # 1. No satellite data
-                # 2. No aircraft data
-                # 3. Aircraft API is rate limited
+                # 2. No aircraft data AND not using fallback
+                # (if using fallback, aircraft data should be present)
                 if not tles:
                     log("DB", "Skipping snapshot: No satellite data available")
-                elif not aircraft:
+                elif not aircraft and not using_fallback:
                     log("DB", "Skipping snapshot: No aircraft data available")
-                elif time.time() < rate_limit_until:
-                    remaining = int(rate_limit_until - time.time())
+                elif not aircraft and using_fallback:
                     log(
                         "DB",
-                        (
-                            "Skipping snapshot: Aircraft API rate limited "
-                            f"({remaining}s remaining)"
-                        ),
+                        "Skipping snapshot: fallback returned no data",
                     )
                 else:
                     self._take_snapshot(scheduled_time=self.next_snapshot)

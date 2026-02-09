@@ -225,11 +225,12 @@ function updateUI(data, timeStr) {
     const rateLimitUntil = data.aircraft_rate_limit_until * 1000; // Convert to ms
     const now = Date.now();
     const remaining = Math.ceil((rateLimitUntil - now) / 1000);
+    const usingFallback = data.aircraft_using_fallback || false;
     
-    console.log(`Rate limit check: until=${rateLimitUntil}, now=${now}, remaining=${remaining}s`);
+    console.log(`Rate limit check: until=${rateLimitUntil}, now=${now}, remaining=${remaining}s, fallback=${usingFallback}`);
     
     if (remaining > 0) {
-      showAircraftRateLimitBanner(remaining);
+      showAircraftRateLimitBanner(remaining, usingFallback);
     } else {
       // Rate limit has expired, close banner if showing
       if (isAircraftRateLimited) {
@@ -709,17 +710,19 @@ let isAircraftRateLimited = false;
 /**
  * Show aircraft API rate limit banner with countdown
  */
-function showAircraftRateLimitBanner(waitSeconds) {
+function showAircraftRateLimitBanner(waitSeconds, usingFallback = false) {
   const banner = document.getElementById('rate-limit-banner');
   const message = document.getElementById('banner-message');
   const snapshotBtn = document.getElementById('snapshot-btn');
   
   banner.classList.remove('hidden');
-  isAircraftRateLimited = true;
+  isAircraftRateLimited = !usingFallback; // Only truly rate limited if not using fallback
   
-  // Disable snapshot button
-  snapshotBtn.disabled = true;
-  snapshotBtn.title = 'Cannot take snapshot: Aircraft API is rate limited';
+  // Only disable snapshot button if NOT using fallback
+  if (!usingFallback) {
+    snapshotBtn.disabled = true;
+    snapshotBtn.title = 'Cannot take snapshot: Aircraft API is rate limited';
+  }
   
   const endTime = Date.now() + (waitSeconds * 1000);
   
@@ -737,7 +740,11 @@ function showAircraftRateLimitBanner(waitSeconds) {
       return;
     }
     
-    message.textContent = `Aircraft API rate limited: Data will resume in ${remaining}s (Snapshots disabled)`;
+    if (usingFallback) {
+      message.textContent = `OpenSky rate limited - Using aircraft.live fallback (Resumes in ${remaining}s)`;
+    } else {
+      message.textContent = `Aircraft API rate limited: Data will resume in ${remaining}s (Snapshots disabled)`;
+    }
   }
   
   updateCountdown();
@@ -870,7 +877,8 @@ function fetchStatus() {
       // Check aircraft rate limit
       if (data.aircraft_rate_limit_until && data.aircraft_rate_limit_until > now) {
         const seconds = Math.ceil(data.aircraft_rate_limit_until - now);
-        showAircraftRateLimitBanner(seconds);
+        const usingFallback = data.aircraft_using_fallback || false;
+        showAircraftRateLimitBanner(seconds, usingFallback);
       }
     })
     .catch(err => console.error('Status fetch error:', err));

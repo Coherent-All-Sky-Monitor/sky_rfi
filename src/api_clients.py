@@ -175,18 +175,61 @@ class AircraftClient:
         self.opensky_user = CONFIG.opensky_username
         self.opensky_pass = CONFIG.opensky_password
         self.cooldown_until = 0
+        self.using_fallback = False
+        self.fallback_reason = ""
 
     def fetch_aircraft(self) -> List[Dict[str, Any]]:
         """Fetch aircraft positions using configured API source."""
         if self.source == "opensky":
-            return self._fetch_opensky()
+            # Try OpenSky first
+            aircraft = self._fetch_opensky()
+
+            # If rate limited (cooldown active), fallback to aircraft.live
+            if not aircraft and time.time() < self.cooldown_until:
+                if not self.using_fallback:
+                    remaining = int(self.cooldown_until - time.time())
+                    log("FALLBACK", "=" * 60)
+                    log("FALLBACK", "OpenSky Network is rate limited!")
+                    log(
+                        "FALLBACK",
+                        "Automatically switching to aircraft.live fallback",
+                    )
+                    resume_time = time.strftime(
+                        "%H:%M:%S", time.localtime(self.cooldown_until)
+                    )
+                    resume_msg = (
+                        "Will resume OpenSky at: "
+                        f"{resume_time} ({remaining}s)"
+                    )
+                    log("FALLBACK", resume_msg)
+                    log("FALLBACK", "=" * 60)
+                    self.using_fallback = True
+                    self.fallback_reason = (
+                        "OpenSky rate limited until " f"{resume_time}"
+                    )
+
+                aircraft = self._fetch_airplanes_live()
+            else:
+                # Cooldown expired, back to normal
+                if self.using_fallback:
+                    log("FALLBACK", "=" * 60)
+                    log("FALLBACK", "OpenSky rate limit has expired")
+                    log("FALLBACK", "Resuming normal OpenSky Network usage")
+                    log("FALLBACK", "=" * 60)
+                    self.using_fallback = False
+                    self.fallback_reason = ""
+
+            return aircraft
         else:
             return self._fetch_airplanes_live()
 
     def _fetch_airplanes_live(self) -> List[Dict[str, Any]]:
         """Fetch aircraft from airplanes.live API."""
-        # Check cooldown (shouldn't be needed with airplanes.live)
-        if time.time() < self.cooldown_until:
+        # No cooldown for airplanes.live (unless we're using it)
+        if (
+            self.source == "airplanes_live"
+            and time.time() < self.cooldown_until
+        ):
             remaining = int(self.cooldown_until - time.time())
             if remaining % 60 == 0:
                 cooldown_msg = (
@@ -199,7 +242,14 @@ class AircraftClient:
         # plane_search_box_deg is in degrees; ~60 NM per degree latitude
         radius_nm = int(CONFIG.plane_search_box_deg * 60)
 
-        log("API", "Fetching aircraft from airplanes.live...")
+        if self.using_fallback:
+            log(
+                "API",
+                "Fetching aircraft from aircraft.live "
+                "(FALLBACK due to OpenSky rate limit)...",
+            )
+        else:
+            log("API", "Fetching aircraft from aircraft.live...")
         aircraft = []
 
         try:
@@ -242,36 +292,42 @@ class AircraftClient:
                                         "alt_m": alt_m,
                                     }
                                 )
+                    source_msg = (
+                        "aircraft.live (FALLBACK)"
+                        if self.using_fallback
+                        else "aircraft.live"
+                    )
                     adsb_msg = (
-                        "airplanes.live success: "
+                        f"{source_msg} success: "
                         f"{len(aircraft)} aircraft found"
                     )
                     log("API", adsb_msg)
                 else:
-                    log("API", "airplanes.live: No aircraft in range")
-
-            elif r.status_code == 429:
-                # Handle rate limiting (unlikely with airplanes.live)
-                retry_header = r.headers.get(
-                    "X-Rate-Limit-Retry-After-Seconds"
-                )
-                wait_time = int(retry_header) + 5 if retry_header else 60
-                rate_msg = f"API rate limit (429). Waiting {wait_time}s"
-                log("API", rate_msg)
-                self.cooldown_until = time.time() + wait_time
-
+                    source_msg = (
+                        "aircraft.live (FALLBACK)"
+                        if self.using_fallback
+                        else "aircraft.live"
+                    )
+                    log("API", f"{source_msg}: No aircraft found in radius")
             else:
-                log(
-                    "API",
-                    f"airplanes.live error {r.status_code}: {r.text[:50]}",
+                source_msg = (
+                    "aircraft.live (FALLBACK)"
+                    if self.using_fallback
+                    else "aircraft.live"
                 )
+                log("API", f"{source_msg} error {r.status_code}")
 
         except (requests.RequestException, ValueError, KeyError) as e:
             log("API", f"Request error: {e}")
 
         if not aircraft:
+            source_msg = (
+                "aircraft.live (FALLBACK)"
+                if self.using_fallback
+                else "aircraft.live"
+            )
             msg = (
-                "airplanes.live: fetched 0 aircraft (after filtering "
+                f"{source_msg}: fetched 0 aircraft (after filtering "
                 "invalid lat/lon/alt)"
             )
             log("API", msg)
@@ -279,12 +335,18 @@ class AircraftClient:
 
     def _fetch_opensky(self) -> List[Dict[str, Any]]:
         """Fetch aircraft from OpenSky Network API."""
-        # Check cooldown
+        # Check cooldown - don't even attempt API call if we're rate limited
         if time.time() < self.cooldown_until:
             remaining = int(self.cooldown_until - time.time())
+            # Only log occasionally to avoid spam
             if remaining % 60 == 0:
-                log("API", f"API cooldown active. Resuming in {remaining}s...")
-            return []
+                log(
+                    "API",
+                    f"OpenSky still in cooldown. Resuming in {remaining}s",
+                )
+            return (
+                []
+            )  # Return empty, fallback will be used by fetch_aircraft()
 
         # Calculate bounding box
         box_deg = CONFIG.plane_search_box_deg
@@ -355,7 +417,17 @@ class AircraftClient:
                     "X-Rate-Limit-Retry-After-Seconds"
                 )
                 wait_time = int(retry_header) + 5 if retry_header else 300
-                log("API", f"OpenSky rate limit (429). Waiting {wait_time}s")
+                log("API", "=" * 60)
+                log("API", "OpenSky Network rate limit (HTTP 429)")
+                log("API", f"Cooldown period: {wait_time} seconds")
+                retry_time = time.strftime(
+                    "%H:%M:%S", time.localtime(time.time() + wait_time)
+                )
+                log(
+                    "API",
+                    f"Will retry at: {retry_time}",
+                )
+                log("API", "=" * 60)
                 self.cooldown_until = time.time() + wait_time
 
             else:

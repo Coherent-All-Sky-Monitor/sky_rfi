@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoV Object Density Analysis - CASM Sky Monitor</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .analysis-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .controls-panel {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            display: inline-block;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .control-group input, .control-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 120px;
+        }
+        
+        .analyze-btn {
+            background: #2196F3;
+            color: white;
+            padding: 10px 30px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .analyze-btn:hover {
+            background: #1976D2;
+        }
+        
+        .analyze-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .stat-card h3 {
+            margin-top: 0;
+            color: #2196F3;
+            font-size: 16px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            color: #666;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .plot-container {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .polar-plot-container {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #2196F3;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="analysis-container">
+        <a href="/" class="back-link">← Back to Sky Monitor</a>
+        
+        <h1>Field of View Object Density Analysis</h1>
+        <p>Analyze object density across all snapshots for a specific field of view.</p>
+        
+        <div class="controls-panel">
+            <div class="control-group">
+                <label for="azimuth">Azimuth (°)</label>
+                <input type="number" id="azimuth" value="180" min="0" max="360" step="1">
+            </div>
+            
+            <div class="control-group">
+                <label for="altitude">Altitude (°)</label>
+                <input type="number" id="altitude" value="45" min="0" max="90" step="1">
+            </div>
+            
+            <div class="control-group">
+                <label for="fov">Field of View (°)</label>
+                <input type="number" id="fov" value="10" min="1" max="180" step="1">
+            </div>
+            
+            <div class="control-group">
+                <label for="object-type">Object Type</label>
+                <select id="object-type">
+                    <option value="all">All Objects</option>
+                    <option value="satellite">Satellites Only</option>
+                    <option value="plane">Aircraft Only</option>
+                </select>
+            </div>
+            
+            <br>
+            
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">Meridian Transit Markers (Optional)</h3>
+            
+            <div class="control-group">
+                <label for="source-names">Source Names (comma-separated)</label>
+                <input type="text" id="source-names" placeholder="e.g., Crab, Vela, B1919+21" style="width: 300px;">
+            </div>
+            
+            <br>
+            
+            <button class="analyze-btn" onclick="runAnalysis()">Run Analysis</button>
+        </div>
+        
+        <div id="results" style="display: none;">
+            <div class="stats-panel" id="stats-container"></div>
+            <div id="transit-info" style="background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;">
+                <h3 style="margin-top: 0; color: #ecf0f1;">Upcoming Meridian Transits</h3>
+                <div id="transit-list" style="color: #ecf0f1;"></div>
+            </div>
+            <div class="plot-container" id="plot-container"></div>
+            <div class="polar-plot-container" id="polar-plot-container"></div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Running analysis...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+    
+    <script>
+        const API_TOKEN = '{{ api_token }}';
+        
+        function runAnalysis() {
+            const az = document.getElementById('azimuth').value;
+            const alt = document.getElementById('altitude').value;
+            const fov = document.getElementById('fov').value;
+            const type = document.getElementById('object-type').value;
+            
+            // Validate inputs
+            if (az < 0 || az > 360) {
+                showError('Azimuth must be between 0 and 360');
+                return;
+            }
+            if (alt < 0 || alt > 90) {
+                showError('Altitude must be between 0 and 90');
+                return;
+            }
+            if (fov < 1 || fov > 180) {
+                showError('Field of View must be between 1 and 180');
+                return;
+            }
+            
+            // Hide previous results and errors
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            
+            // Disable button
+            const btn = document.querySelector('.analyze-btn');
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            
+            // Get source names if provided
+            const sourceNames = document.getElementById('source-names').value.trim();
+            
+            // Make API request
+            const url = new URL('/api/analyze/fov', window.location.origin);
+            url.searchParams.set('az', az);
+            url.searchParams.set('alt', alt);
+            url.searchParams.set('fov', fov);
+            url.searchParams.set('type', type);
+            if (sourceNames) {
+                url.searchParams.set('sources', sourceNames);
+            }
+            
+            fetch(url, {
+                headers: { 'X-API-Token': API_TOKEN }
+            })
+            .then(r => r.json())
+            .then(data => {
+                console.log('Analysis response:', data);
+                console.log('Has polar_plot_json key:', 'polar_plot_json' in data);
+                console.log('polar_plot_json value:', data.polar_plot_json);
+                console.log('Future transits:', data.future_transits);
+                console.log('Current transits:', data.transits);
+                
+                document.getElementById('loading').style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = 'Run Analysis';
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResults(data);
+                }
+            })
+            .catch(err => {
+                document.getElementById('loading').style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = 'Run Analysis';
+                showError('Analysis failed: ' + err.message);
+            });
+        }
+        
+        function displayResults(data) {
+            document.getElementById('results').style.display = 'block';
+            
+            // Display future transits if any
+            if (data.future_transits && data.future_transits.length > 0) {
+                const transitInfo = document.getElementById('transit-info');
+                const transitList = document.getElementById('transit-list');
+                
+                let html = '<ul style="margin: 0; padding-left: 20px;">';
+                data.future_transits.forEach(t => {
+                    const date = new Date(t.time);
+                    html += `<li><strong>${t.source}</strong>: ${date.toLocaleString()} (in ${t.time_until}) at altitude ${t.altitude}°</li>`;
+                });
+                html += '</ul>';
+                
+                transitList.innerHTML = html;
+                transitInfo.style.display = 'block';
+            } else {
+                document.getElementById('transit-info').style.display = 'none';
+            }
+            
+            // Display statistics
+            const statsHtml = `
+                <div class="stat-card">
+                    <h3>Analysis Info</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Snapshots Analyzed:</span>
+                        <span class="stat-value">${data.stats.snapshots_analyzed}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Time Range:</span>
+                        <span class="stat-value">${data.stats.time_range.start} - ${data.stats.time_range.end}</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>FoV Statistics</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Mean Objects:</span>
+                        <span class="stat-value">${data.stats.fov_stats.mean.toFixed(1)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Objects:</span>
+                        <span class="stat-value">${data.stats.fov_stats.max}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Min Objects:</span>
+                        <span class="stat-value">${data.stats.fov_stats.min}</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Near-Horizon (0-10°)</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Mean Objects:</span>
+                        <span class="stat-value">${data.stats.horizon_stats.mean.toFixed(1)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Objects:</span>
+                        <span class="stat-value">${data.stats.horizon_stats.max}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Min Objects:</span>
+                        <span class="stat-value">${data.stats.horizon_stats.min}</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Total Above Horizon</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Mean Objects:</span>
+                        <span class="stat-value">${data.stats.total_stats.mean.toFixed(1)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Objects:</span>
+                        <span class="stat-value">${data.stats.total_stats.max}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Min Objects:</span>
+                        <span class="stat-value">${data.stats.total_stats.min}</span>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('stats-container').innerHTML = statsHtml;
+            
+            // Display plot using Plotly
+            const plotData = JSON.parse(data.plot_json);
+            Plotly.newPlot('plot-container', plotData.data, plotData.layout, {responsive: true});
+            
+            // Render polar plot if available
+            console.log('Polar plot JSON exists:', !!data.polar_plot_json);
+            if (data.polar_plot_json) {
+                console.log('Rendering polar plot...');
+                const polarData = JSON.parse(data.polar_plot_json);
+                console.log('Polar data traces:', polarData.data.length);
+                Plotly.newPlot('polar-plot-container', polarData.data, polarData.layout, {
+                    responsive: true,
+                    staticPlot: true,  // Disable all interactivity
+                    displayModeBar: false
+                });
+                console.log('Polar plot rendered');
+            } else {
+                console.log('No polar plot data available');
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

@@ -36,6 +36,7 @@
                 {% if live_view_url %}
                 <button onclick="window.open('{{ live_view_url }}', '_blank')" id="live-view-btn" title="Open live view">Live View</button>
                 {% endif %}
+                <button onclick="window.location.href='/analyze'" id="analyze-btn" title="Analyze object density in field of view">FoV Analysis</button>
                 <button onclick="toggleTheme()" id="theme-btn">Light Mode</button>
             </div>
         </header>

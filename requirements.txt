@@ -9,6 +9,7 @@ PyYAML>=6.0.1
 
 # Astronomy & Satellite Tracking
 skyfield>=1.46
+astroquery>=0.4.6
 
 # Plotting
 plotly>=5.18.0
